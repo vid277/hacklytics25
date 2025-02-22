@@ -12,8 +12,8 @@ export default async function RootLayout({
 }) {
   const supabase = await createClient();
   const {
-    data: { session },
-  } = await supabase.auth.getSession();
+    data: { user },
+  } = await supabase.auth.getUser();
 
   return (
     <html lang="en">
@@ -21,7 +21,7 @@ export default async function RootLayout({
         <ToastProvider>
           <AuthProvider>
             <main className="min-h-screen flex flex-col">
-              <Navbar user={session?.user ?? null} />
+              <Navbar user={user ?? null} />
               {children}
             </main>
           </AuthProvider>
