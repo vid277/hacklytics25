@@ -1,5 +1,5 @@
 import { signInAction } from "@/app/actions";
-import { FormMessage, Message } from "@/components/form-message";
+import { FormMessage } from "@/components/form-message";
 import { SubmitButton } from "@/components/submit-button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -11,21 +11,28 @@ import { StepsProgress } from "@/components/steps-progress";
 export default async function SignIn({
   searchParams,
 }: {
-  searchParams: { message: string; error?: string };
+  searchParams: { message?: string; error?: string; success?: string };
 }) {
   const supabase = await createClient();
+
   const {
     data: { user },
+    error,
   } = await supabase.auth.getUser();
 
-  if (user) {
-    return redirect("/protected");
+  if (user && !error) {
+    return redirect("/dashboard");
   }
+
+  const message = {
+    message: searchParams.message,
+    error: searchParams.error,
+    success: searchParams.success,
+  };
 
   return (
     <form className="flex-1 flex flex-col min-w-64 items-center justify-center w-screen h-screen">
       <StepsProgress />
-
       <div className="flex flex-col gap-2 items-center w-[30rem]">
         <h1 className="text-4xl font-medium font-oddlini">Sign in</h1>
         <p className="text-sm text-foreground font-hanken items-center">
@@ -66,7 +73,7 @@ export default async function SignIn({
           >
             Sign in
           </SubmitButton>
-          <FormMessage message={searchParams} />
+          <FormMessage message={message} />
         </div>
       </div>
     </form>
