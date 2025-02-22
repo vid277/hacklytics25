@@ -34,14 +34,20 @@ const getStatusBadgeVariant = (status: string | undefined) => {
 export function JobsContent() {
   const [mounted, setMounted] = useState(false);
   const [jobs, setJobs] = useState<Job[]>([]);
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [selectedJob, setSelectedJob] = useState<Job | null>(null);
   const [showDetails, setShowDetails] = useState(false);
 
   useEffect(() => {
     setMounted(true);
+  }, []);
+
+  useEffect(() => {
+    if (!mounted) return;
+
     const fetchJobs = async () => {
+      setIsLoading(true);
       try {
         const { data, error } = await supabase
           .from("jobs")
@@ -58,7 +64,7 @@ export function JobsContent() {
     };
 
     fetchJobs();
-  }, []);
+  }, [mounted]);
 
   if (!mounted) return null;
 

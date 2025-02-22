@@ -44,19 +44,25 @@ const getStatusBadgeVariant = (status: string | undefined) => {
 
 export function DashboardContent() {
   const { user } = useAuth();
+  const [mounted, setMounted] = useState(false);
   const [uploadedJobs, setUploadedJobs] = useState<Job[]>([]);
   const [lendingJobs, setLendingJobs] = useState<Job[]>([]);
   const [moneySpent, setMoneySpent] = useState(0);
   const [moneyReceived, setMoneyReceived] = useState(0);
   const router = useRouter();
-  const [isLoading, setIsLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
   const [selectedJob, setSelectedJob] = useState<Job | null>(null);
   const [showAllUploads, setShowAllUploads] = useState(false);
 
   useEffect(() => {
-    if (!user) return;
+    setMounted(true);
+  }, []);
+
+  useEffect(() => {
+    if (!mounted || !user) return;
 
     const fetchJobs = async () => {
+      setIsLoading(true);
       try {
         const { data: uploaded, error: uploadError } = await supabase
           .from("jobs")
@@ -103,7 +109,9 @@ export function DashboardContent() {
     };
 
     fetchJobs();
-  }, [user]);
+  }, [mounted, user]);
+
+  if (!mounted) return null;
 
   const handleJobClick = (job: Job) => {
     setSelectedJob(job);
