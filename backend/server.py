@@ -1,6 +1,6 @@
 import docker
 import boto3
-ECR_URI = "308832414989.dkr.ecr.us-east-1.amazonaws.com/hacklytics/storage"
+ECR_URI = "864899844109.dkr.ecr.us-east-1.amazonaws.com/hacklytics25/storage"
 
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi import FastAPI, File, HTTPException, UploadFile, Form, FileResponse

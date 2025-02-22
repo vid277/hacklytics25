@@ -1,12 +1,15 @@
 import argparse
 import asyncio
+import base64
 import getpass
 import os
 import subprocess
 import shutil
+import docker
 import httpx
 import requests
 from supabase import create_client, Client
+import boto3
 
 # File to store login credentials
 CREDENTIALS_FILE = "login_credentials.txt"
@@ -16,6 +19,19 @@ url = "https://pristirosscbgmkblozz.supabase.co"
 key = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InByaXN0aXJvc3NjYmdta2Jsb3p6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDAyMDI2MzQsImV4cCI6MjA1NTc3ODYzNH0.7NWqkC5MUndwTxuLGlyBIEskItFzJ3M8iAKcARc_1yM"  # Replace with your Supabase anonymous API key
 
 supabase: Client = create_client(url, key)
+
+
+client = docker.from_env()
+
+ECR_URI = "864899844109.dkr.ecr.us-east-1.amazonaws.com/hacklytics25/storage"
+ecr_client = boto3.client('ecr')
+response = ecr_client.get_authorization_token()
+auth_token = response['authorizationData'][0]['authorizationToken']
+decoded_token = base64.b64decode(auth_token).decode('utf-8')    
+_user, _pass = decoded_token.split(':')
+
+registry = response['authorizationData'][0]['proxyEndpoint']
+client.login(username=_user, password=_pass, registry=registry)
 
 def authenticate(username, password):
     try:
@@ -149,7 +165,6 @@ def main():
     run_parser = subparsers.add_parser("logout", help="Logout")
     run_parser = subparsers.add_parser("login", help="Login")
     run_parser = subparsers.add_parser("create_account", help="Create Account")
-
 
 
     args = parser.parse_args()
