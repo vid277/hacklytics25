@@ -3,6 +3,8 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { StepsProgress } from "@/components/steps-progress";
+import { SmtpMessage } from "@/app/(auth-pages)/smtp-message";
+
 export default function UploadPage() {
   const [file, setFile] = useState<File | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -49,15 +51,6 @@ export default function UploadPage() {
         </p>
 
         <div className="flex flex-col gap-2 [&>input]:mb-3 mt-4 w-full">
-          <div className="bg-accent/50 rounded-lg p-6 mb-2">
-            <p className="text-sm mb-2 font-hanken">
-              This file will be used to deploy your application.
-            </p>
-            <p className="text-xs text-muted-foreground font-hanken">
-              Only .tar files are accepted
-            </p>
-          </div>
-
           <label htmlFor="file-upload" className="font-hanken">
             Docker Image File
           </label>
