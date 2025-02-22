@@ -1,12 +1,15 @@
-#!/usr/bin/env python3
-
 import argparse
+import asyncio
 import getpass
 import os
 import subprocess
 import shutil
+import httpx
 import requests
 from supabase import create_client, Client
+
+# File to store login credentials
+CREDENTIALS_FILE = "login_credentials.txt"
 
 # Set up the Supabase client with your URL and API Key
 url = "https://pristirosscbgmkblozz.supabase.co"
@@ -21,14 +24,31 @@ def authenticate(username, password):
         print(f"Error during authentication: {e}")
         return False
     return True
+
 def create_account(username, password):
     try:
         sign_up_response = supabase.auth.sign_up({"email": username, "password": password})
-
     except Exception as e:
         print(f"Error during account creation: {e}")
         return False
     return True
+
+def save_credentials(username, password):
+    with open(CREDENTIALS_FILE, 'w') as file:
+        file.write(f"{username}\n{password}\n")
+
+def load_credentials():
+    if os.path.exists(CREDENTIALS_FILE):
+        with open(CREDENTIALS_FILE, 'r') as file:
+            username, password = file.read().splitlines()
+            return username, password
+    return None, None
+
+def delete_credentials():
+    if os.path.exists(CREDENTIALS_FILE):
+        os.remove(CREDENTIALS_FILE)
+        print("Successfully logged out.")
+
 def download_docker_container(container_url, container_name, username):
     print(f"Downloading from {container_url}...")
     response = requests.get(container_url, stream=True)
@@ -41,13 +61,22 @@ def download_docker_container(container_url, container_name, username):
         print("Failed to download/load Docker container.")
         exit(1)
 
-def run_docker_container(container_name, docker_dir):
-    print(f"Running Docker container {container_name}...")
+def run_docker_container(container_name, docker_dir, timeout_days):
+    timeout_seconds = timeout_days * 86400
+    print(f"Running Docker container {container_name} with a timeout of {timeout_days} days...")
+
     try:
         print(str(os.path.abspath('./out')))
-        subprocess.run(["docker", "run", "-v", f"{str(os.path.abspath('./out'))}:{docker_dir}", container_name], check=True)
+        subprocess.run(
+            ["docker", "run", "-v", f"{str(os.path.abspath('./out'))}:{docker_dir}", container_name],
+            check=True,
+            timeout=timeout_seconds
+        )
     except subprocess.CalledProcessError as e:
         print(f"Error running Docker container: {e}")
+        exit(1)
+    except subprocess.TimeoutExpired:
+        print(f"Error: Docker container timed out after {timeout_days} days.")
         exit(1)
 
 def track_files():
@@ -61,7 +90,7 @@ def track_files():
 def upload_files(files):
     print("Uploading created files...")
     for file in files:
-        print(f"Uploading {file}...")
+        print(f"Uploading {file}...")  # Implement your file upload logic
     print("All files uploaded successfully.")
 
 def delete_docker_resources(container_name, output_dir):
@@ -76,20 +105,34 @@ def delete_docker_resources(container_name, output_dir):
         print(f"Deleting files in the output directory {output_dir}...")
         shutil.rmtree(output_dir)
 
-def fetch_container_info(id):
-    print(f"Fetching container info for task {id}...")
+async def fetch_container_info(id):
+    url = f"http://your-fastapi-url/get-job-info/{id}"
+    async with httpx.AsyncClient() as client:
+        response = await client.get(url)
     
-
-def run_command(id, username):
-    data = fetch_container_info(id)
-
-    container_url = "http://example.com/docker_image.tar" # data["container_url"]
-    container_name = f"task_{id}_container.tar" # data["container_name"]
-    docker_dir = "/app/output"  # FOR DOCKER JAWN # data["docker_dir"]
+    if response.status_code == 200:
+        job_data = response.json()
+        print(f"Job found: {job_data}")
+        return job_data
+    else:
+        print(f"Error fetching job info: {response.status_code}")
+        return None
     
+async def run_command(id, username):
+    data = await fetch_container_info(id)
+    print("container info\n" + data)
+    user_id = data["user_id"]
+    compute_type =  data["compute_type"]
+    timeout = data["timeout"]
+    docker_dir = data["output_directory"]
+    image_name = data["container_name"]
+
+
+    container_url = "http://example.com/docker_image.tar"
+    container_name = f"task_{id}_container.tar" 
 
     download_docker_container(container_url, container_name, username)
-    run_docker_container("test-container", docker_dir)
+    run_docker_container(image_name, docker_dir)
     
     created_files = track_files()
     upload_files(created_files)
@@ -102,33 +145,72 @@ def main():
     
     run_parser = subparsers.add_parser("run", help="Run a task")
     run_parser.add_argument("-k", required=True, help="Authentication key")
-    
+   
+    run_parser = subparsers.add_parser("logout", help="Logout")
+    run_parser = subparsers.add_parser("login", help="Login")
+    run_parser = subparsers.add_parser("create_account", help="Create Account")
+
+
+
     args = parser.parse_args()
-
-    username = input("Username (email): ").lower()
-    password = getpass.getpass("Password: ")
-
-    # Authenticate user via Supabase
-    if authenticate(username, password):
-        if args.command == "run":
-            run_command(args.k)
-    else:
-        print("Authentication failed.")
-        create_account_choice = input("Do you want to create a new account? (y/n): ").strip().lower()
-        if create_account_choice == 'y':
-            username = input("Username (email): ")
-            password = getpass.getpass("Password: ")
-            if create_account(username, password):
-                
-                if authenticate(username, password):
-                    if args.command == "run":
-                        run_command(args.k)
-                else:
-                    print("Failed to log in after account creation.")
-            else:
-                print("Account creation failed.")
+     
+    if args.command == "logout":
+        print("Deleting saved credentials...")
+        delete_credentials()
+        return 
+    elif args.command == "login":
+        username = input("Username (email): ").lower()
+        password = getpass.getpass("Password: ")
+        if authenticate(username, password):
+            save_credentials(username, password)
+            print("Successfully logged in.")
         else:
-            print("Exiting...")
+            print("Authentication failed.")
+        return
+    elif args.command == "create_account":
+        username = input("Username (email): ").lower()
+        password = getpass.getpass("Password: ")
+        if create_account(username, password):
+            if authenticate(username, password):
+                save_credentials(username, password)
+                print("Successfully created account and logged in.")
+            else:
+                print("Failed to log in after account creation.")
+        else:
+            print("Account creation failed.")
+        return
+    elif args.command == "run":
+        if not args.k:
+            print("Please provide an authentication key.")
+            return
+        username, password = load_credentials()
+        if username and password:
+            print(f"Logged in as {username}")
+            if args.command == "run":
+                asyncio.run(run_command(args.k, username))
+            
+        else:
+            print("No saved credentials found. Please log in.")
+            username = input("Username (email): ").lower()
+            password = getpass.getpass("Password: ")
+
+            if authenticate(username, password):
+                save_credentials(username, password)
+                asyncio.run(run_command(args.k, username))
+            else:
+                print("Authentication failed.")
+                create_account_choice = input("Do you want to create a new account? (y/n): ").strip().lower()
+                if create_account_choice == 'y':
+                    if create_account(username, password):
+                        if authenticate(username, password):
+                            save_credentials(username, password)
+                            asyncio.run(run_command(args.k, username))
+                        else:
+                            print("Failed to log in after account creation.")
+                    else:
+                        print("Account creation failed.")
+                else:
+                    print("Exiting...")
 
 if __name__ == "__main__":
     main()
