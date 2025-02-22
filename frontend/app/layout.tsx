@@ -1,6 +1,7 @@
 import { createClient } from "@/utils/supabase/server";
 import Navbar from "@/components/magic/navbar";
 import "./globals.css";
+import { AuthProvider } from "@/contexts/auth-context";
 
 export default async function RootLayout({
   children,
@@ -8,15 +9,19 @@ export default async function RootLayout({
   children: React.ReactNode;
 }) {
   const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
 
   return (
     <html lang="en">
       <body>
-        <main className="min-h-screen flex flex-col">
-          <Navbar user={user} />
-          {children}
-        </main>
+        <AuthProvider>
+          <main className="min-h-screen flex flex-col">
+            <Navbar user={user} />
+            {children}
+          </main>
+        </AuthProvider>
       </body>
     </html>
   );
