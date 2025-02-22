@@ -255,7 +255,7 @@ export function DashboardContent() {
       <EditSchedule />
 
       <Dialog open={!!selectedJob} onOpenChange={() => setSelectedJob(null)}>
-        <DialogContent className="sm:max-w-[425px] shadow-lg backdrop-blur-[2px] bg-white/95 border-none">
+        <DialogContent className="sm:max-w-[500px] shadow-lg backdrop-blur-[2px] bg-white/95 border-none">
           <DialogHeader className="mb-3">
             <DialogTitle>Job Details</DialogTitle>
           </DialogHeader>
