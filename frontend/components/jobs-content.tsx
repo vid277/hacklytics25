@@ -7,12 +7,7 @@ import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { Loader2, Clock, Server, HardDrive } from "lucide-react";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { motion } from "framer-motion";
 
 interface Job {
   id: number;
@@ -24,7 +19,6 @@ interface Job {
   lender_id?: string;
   price?: number;
   created_at?: string;
-  container_name?: string;
   status?: string;
 }
 
@@ -43,6 +37,7 @@ export function JobsContent() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedJob, setSelectedJob] = useState<Job | null>(null);
+  const [showDetails, setShowDetails] = useState(false);
 
   useEffect(() => {
     setMounted(true);
@@ -118,7 +113,7 @@ export function JobsContent() {
                     {formatId(job.id)}
                   </h3>
                   <p className="text-sm text-muted-foreground font-hanken">
-                    {job.type_of_compute || "Standard Compute"}
+                    {job.compute_type || "Standard Compute"}
                   </p>
                 </div>
                 <Badge variant={getStatusBadgeVariant(job.status)}>
@@ -147,13 +142,13 @@ export function JobsContent() {
                   </span>
                 </div>
 
-                {job.result_file && (
+                {job.output_directory && (
                   <div className="text-sm">
                     <span className="text-muted-foreground font-hanken">
-                      Result:{" "}
+                      Output:{" "}
                     </span>
                     <Link
-                      href={job.result_file}
+                      href={job.output_directory}
                       className="text-primary hover:underline font-hanken"
                     >
                       View Results
@@ -162,10 +157,23 @@ export function JobsContent() {
                 )}
               </div>
 
-              <div className="mt-4 pt-4 border-t">
-                <Button className="w-full" variant="outline">
-                  View Details
-                </Button>
+              <div className="space-y-2 font-hanken mt-5 pt-5 border-t">
+                <div className="flex items-center gap-2 text-sm">
+                  <Server className="h-4 w-4" />
+                  <span className="text-muted-foreground font-hanken">
+                    Compute Type:
+                  </span>
+                  <span>{job.compute_type || "Standard"}</span>
+                </div>
+                <div className="flex items-center gap-2 text-sm">
+                  <Clock className="h-4 w-4" />
+                  <span className="text-muted-foreground font-hanken">
+                    Timeout:
+                  </span>
+                  <span>
+                    {job.timeout || "N/A"} {job.timeout == 1 ? "hour" : "hours"}
+                  </span>
+                </div>
               </div>
             </Card>
           ))}
