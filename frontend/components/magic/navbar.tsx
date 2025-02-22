@@ -5,12 +5,15 @@ import { motion } from "framer-motion";
 import { UserRoundIcon } from "lucide-react";
 import { User } from "@supabase/supabase-js";
 import { signOutAction } from "@/app/actions";
+import { usePathname } from "next/navigation";
 
 interface NavbarProps {
   user?: User | null;
 }
 
 export default function Navbar({ user }: NavbarProps) {
+  const pathname = usePathname();
+
   return (
     <motion.div className="flex h-16 px-10 items-center justify-between border-b sticky top-0 z-[999] bg-white">
       <div className="flex items-center gap-6 font-oddlini justify-center mt-0.5">
@@ -19,21 +22,33 @@ export default function Navbar({ user }: NavbarProps) {
         </Link>
         {user && (
           <nav className="flex items-center gap-4">
-            <Link 
-              href="/dashboard" 
-              className="text-sm font-medium hover:text-foreground/80"
+            <Link
+              href="/dashboard"
+              className={`text-sm font-medium hover:text-foreground/80 ${
+                pathname === "/dashboard"
+                  ? "underline transition-all duration-300"
+                  : ""
+              }`}
             >
               Dashboard
             </Link>
-            <Link 
-              href="/jobs" 
-              className="text-sm font-medium hover:text-foreground/80"
+            <Link
+              href="/jobs"
+              className={`text-sm font-medium hover:text-foreground/80 ${
+                pathname === "/jobs"
+                  ? "underline transition-all duration-300"
+                  : ""
+              }`}
             >
               Jobs
             </Link>
-            <Link 
-              href="/upload" 
-              className="text-sm font-medium hover:text-foreground/80"
+            <Link
+              href="/upload"
+              className={`text-sm font-medium hover:text-foreground/80 ${
+                pathname === "/upload"
+                  ? "underline transition-all duration-300"
+                  : ""
+              }`}
             >
               Upload
             </Link>

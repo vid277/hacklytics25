@@ -7,12 +7,7 @@ import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { Loader2, Clock, Server, HardDrive } from "lucide-react";
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
+import { motion } from "framer-motion";
 
 interface Job {
   id: number;
@@ -24,7 +19,6 @@ interface Job {
   lender_id?: string;
   price?: number;
   created_at?: string;
-  container_name?: string;
   status?: string;
 }
 
@@ -43,6 +37,7 @@ export function JobsContent() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedJob, setSelectedJob] = useState<Job | null>(null);
+  const [showDetails, setShowDetails] = useState(false);
 
   useEffect(() => {
     setMounted(true);
@@ -162,46 +157,28 @@ export function JobsContent() {
                 )}
               </div>
 
-              <div className="mt-4 pt-4 border-t">
-                <Button
-                  className="w-full"
-                  variant="outline"
-                  onClick={() => setSelectedJob(job)}
-                >
-                  View Details
-                </Button>
+              <div className="space-y-2 font-hanken mt-5 pt-5 border-t">
+                <div className="flex items-center gap-2 text-sm">
+                  <Server className="h-4 w-4" />
+                  <span className="text-muted-foreground font-hanken">
+                    Compute Type:
+                  </span>
+                  <span>{job.compute_type || "Standard"}</span>
+                </div>
+                <div className="flex items-center gap-2 text-sm">
+                  <Clock className="h-4 w-4" />
+                  <span className="text-muted-foreground font-hanken">
+                    Timeout:
+                  </span>
+                  <span>
+                    {job.timeout || "N/A"} {job.timeout == 1 ? "hour" : "hours"}
+                  </span>
+                </div>
               </div>
             </Card>
           ))}
         </div>
       )}
-
-      <Dialog open={!!selectedJob} onOpenChange={() => setSelectedJob(null)}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle className="font-oddlini">Job Details</DialogTitle>
-          </DialogHeader>
-          {selectedJob && (
-            <div className="space-y-2 font-hanken mt-2">
-              <div className="flex items-center gap-2">
-                <Server className="h-4 w-4" />
-                <span className="font-medium">Compute Type:</span>
-                <span>{selectedJob.compute_type || "Standard"}</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <Clock className="h-4 w-4" />
-                <span className="font-medium">Timeout:</span>
-                <span>{selectedJob.timeout || "N/A"} seconds</span>
-              </div>
-              <div className="flex items-center gap-2">
-                <HardDrive className="h-4 w-4" />
-                <span className="font-medium">Container:</span>
-                <span>{selectedJob.container_name || "N/A"}</span>
-              </div>
-            </div>
-          )}
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }
