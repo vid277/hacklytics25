@@ -9,11 +9,10 @@ import subprocess
 import shutil
 import sys
 import time
+import requests
 import docker
 import httpx
 from supabase import create_client, Client
-import psutil
-import platform
 import torch
 import tarfile
 import boto3
@@ -43,6 +42,7 @@ registry = response["authorizationData"][0]["proxyEndpoint"]
 client.login(username=_user, password=_pass, registry=registry)
 
 UUID = None
+JOB_UUID = ""
 
 
 def authenticate(username, password):
@@ -111,22 +111,19 @@ class ApiLogHandler(logging.Handler):
         super().__init__()
         self.client = client
 
-    async def emit(self, record):
+    def emit(self, record):
+        log_data = {
+            "logs": self.format(record) + "\n",
+            "job_id": JOB_UUID,
+        }  # Wrap log message in a dictionary
+        print(log_data)
         try:
-            log_message = self.format(record)
-            await self.send_log_to_api(log_message)
-        except Exception as e:
-            logging.error(f"Failed to send log: {e}")
-
-    async def send_log_to_api(self, log_message):
-        try:
-            async with self.client.post(
-                API_ROUTE + "/append-logs/", json={"log": log_message}
-            ) as response:
-                if response.status_code != 200:
-                    logging.error(f"Failed to send log: {response.status_code}")
-        except Exception as e:
-            logging.error(f"Error sending log: {e}")
+            response = requests.post(
+                API_ROUTE + "/append-logs/", data=log_data
+            )  # Use `json=` instead of `data=`
+            response.raise_for_status()
+        except requests.exceptions.RequestException as e:
+            print(f"Error sending log to API: {e}")
 
 
 # Configure logging to log to both console and the API
@@ -200,7 +197,7 @@ def run_docker_container(container_name, docker_dir, timeout_days):
         if return_code != 0:
             logging.error(f"Error running Docker container: {process.stderr.read()}")
             exit(1)
-        
+
         logging.info("Docker container finished successfully.")
         upload_files(track_files(), job_id)
 
@@ -305,7 +302,8 @@ async def run_command(id):
     # compute_type =  data["compute_type"]
     # timeout = data["timeout"]
     # docker_dir = data["output_directory"]
-
+    global JOB_UUID
+    JOB_UUID = id
     docker_dir = "/app/"
     container_name = f"{id}.tar"
 
@@ -314,19 +312,11 @@ async def run_command(id):
     logging.info("Finished running job")
 
     delete_docker_resources(container_name, "./out")
+    JOB_UUID = None
 
 
 async def isActive():
     return True
-
-
-def get_cpu_info():
-    return {
-        "Name": platform.processor(),
-        "Cores": psutil.cpu_count(logical=False),
-        "Threads": psutil.cpu_count(logical=True),
-        "Max Frequency (MHz)": psutil.cpu_freq().max,
-    }
 
 
 def is_gpu_available():
@@ -334,16 +324,19 @@ def is_gpu_available():
 
 
 async def autorun_command():
-    if not await isActive():
-        return None
+    while await isActive():
 
-    use_gpu = is_gpu_available()
+        use_gpu = is_gpu_available()
 
-    if use_gpu:
-        return "GPU Available - Running with GPU."
-    else:
-        cpu_info = get_cpu_info()
-        return f"No valid GPU detected. Using CPU: {cpu_info}."
+        id = getBestJob(use_gpu)
+        if not id:
+            logging.info("No jobs available.")
+            continue
+        print("Found best job: ", id)
+
+        run_command(id)
+
+        time.sleep(10)
 
 
 def main():

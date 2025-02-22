@@ -45,8 +45,21 @@ username, password = decoded_token.split(":")
 registry = response["authorizationData"][0]["proxyEndpoint"]
 client.login(username=username, password=password, registry=registry)
 
+
 def insert_job(user_id, job_id, compute_type, timeout, output_directory, price):
-    supabase.table("jobs").insert([{"user_id": user_id, "job_id": job_id, "compute_type": compute_type, "timeout": timeout, "output_directory": output_directory, "price": price}]).execute()
+    supabase.table("jobs").insert(
+        [
+            {
+                "user_id": user_id,
+                "job_id": job_id,
+                "compute_type": compute_type,
+                "timeout": timeout,
+                "output_directory": output_directory,
+                "price": price,
+            }
+        ]
+    ).execute()
+
 
 def fetch_job(job_id):
     response = supabase.table("jobs").select("*").eq("job_id", job_id).execute()
@@ -55,12 +68,12 @@ def fetch_job(job_id):
 
 @app.post("/create-job/")
 async def create_job(
-    user_id: str = Form(...),  
-    file: UploadFile = File(...),  
-    compute_type: str = Form(...), 
-    timeout: int = Form(...), 
+    user_id: str = Form(...),
+    file: UploadFile = File(...),
+    compute_type: str = Form(...),
+    timeout: int = Form(...),
     output_directory: str = Form(...),
-    price: float = Form(...)
+    price: float = Form(...),
 ):
     filename = file.filename
     file_path = os.path.join(UPLOAD_DIR, filename)
@@ -78,8 +91,7 @@ async def create_job(
 
     except Exception as e:
         return {"status": "error", "message": str(e)}
-       
-    
+
     insert_job(user_id, job_id, compute_type, timeout, output_directory, price)
 
     return {"status": "success", "message": f"Job id {job_id} created successfully"}
@@ -95,7 +107,7 @@ class JobResponse(BaseModel):
 
 
 @app.get("/get-job-info/", response_model=JobResponse)
-async def get_job_info(job_id: str):
+async def get_job_info(job_id: str = Form(...)):
     response = fetch_job(job_id)
 
     if not response:
@@ -125,7 +137,7 @@ def retrieve_container(job_id, image_name):
 
 
 @app.post("/take-job/")
-def take_job(job_id: str, lender_id: str):
+def take_job(job_id: str = Form(...), lender_id: str = Form(...)):
     try:
         supabase.table("jobs").update({"lender_id": lender_id}).eq(
             "job_id", job_id
@@ -139,20 +151,26 @@ def take_job(job_id: str, lender_id: str):
 
 
 @app.post("/append-logs/")
-def append_logs(job_id: str, logs: str):
+def append_logs(job_id: str = Form(...), logs: str = Form(...)):
     try:
-        response = supabase.table("jobs").select("logs").eq("job_id", job_id).execute()
-        current_logs = response.data[0]["logs"] if response.data else ""
-        updated_logs = current_logs + logs
-        supabase.table("jobs").update({"logs": updated_logs}).eq(
-            "job_id", job_id
-        ).execute()
+        response = supabase.table("logs").select("logs").eq("job_id", job_id).execute()
+
+        if response.data:  # Record exists, update it
+            current_logs = response.data[0]["logs"]
+            updated_logs = current_logs + logs
+            supabase.table("logs").update({"logs": updated_logs}).eq(
+                "job_id", job_id
+            ).execute()
+        else:  # Record does not exist, insert new
+            supabase.table("logs").insert({"job_id": job_id, "logs": logs}).execute()
+
         return {"status": "success", "message": "Logs updated successfully"}
+
     except Exception as e:
         return {"status": "error", "message": str(e)}
 
 
 @app.get("/get-log/")
-def get_logs(job_id: str):
-    response = supabase.table("jobs").select("logs").eq("job_id", job_id).execute()
+def get_logs(job_id: str = Form(...)):
+    response = supabase.table("logs").select("logs").eq("job_id", job_id).execute()
     return response.data[0]["logs"] if response.data else ""
