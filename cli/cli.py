@@ -23,7 +23,6 @@ def authenticate(username, password):
     return True
 def create_account(username, password):
     try:
-        # Sign up using email (username) and password
         sign_up_response = supabase.auth.sign_up({"email": username, "password": password})
 
     except Exception as e:
