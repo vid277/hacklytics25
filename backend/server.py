@@ -1,3 +1,4 @@
+from datetime import datetime
 import docker
 import boto3
 ECR_URI = "864899844109.dkr.ecr.us-east-1.amazonaws.com/hacklytics25/storage"
@@ -97,11 +98,10 @@ class JobResponse(BaseModel):
 @app.get("/get-job-info/", response_model=JobResponse)
 async def get_job_info(job_id: str = Form(...)):
     response = fetch_job(job_id)
-
     if not response:
         raise HTTPException(status_code=404, detail="Job not found")
 
-    job_data = response.data[0]
+    job_data = response[0]
     if job_data['lender_id']:
         raise HTTPException(status_code=400, detail="Job already taken by lender")
     
@@ -130,7 +130,26 @@ def take_job(job_id: str = Form(...), lender_id: str = Form(...)):
         return {"status": "success", "message": f"Job id {job_id} taken by lender {lender_id}"}
     except Exception as e:
         return {"status": "error", "message": str(e)}
+
     
+@app.post("/free-job/")
+def free_job(job_id: str = Form(...)):
+    try:
+        response = supabase.table("jobs").select("job_id").eq("job_id", job_id).execute()
+        
+        if not response.data:
+            return {"status": "error", "message": f"Job ID {job_id} not found"}
+
+        update_response = supabase.table("jobs").update({"lender_id": None}).eq("job_id", job_id).execute()
+
+        if update_response.status_code != 200:
+            return {"status": "error", "message": f"Failed to update job ID {job_id}. Response: {update_response.status_code}"}
+
+        return {"status": "success", "message": f"Job ID {job_id} lender freed"}
+    
+    except Exception as e:
+        return {"status": "error", "message": f"An error occurred: {str(e)}"}
+
 @app.post("/append-logs/")
 def append_logs(job_id: str = Form(...), logs: str = Form(...)):
     try:
@@ -179,3 +198,70 @@ def retrieve_files_for_job(job_id: str = Query(...)):
     ret_dict["files"] = file_list
     return ret_dict
     
+
+def get_hour_index():
+    now = datetime.utcnow()  # Use UTC to avoid timezone issues
+    weekday = now.weekday()  # Monday = 0, Sunday = 6
+    hour = now.hour
+    return (weekday * 24) + hour  # Compute the hour index
+
+@app.get("/is-active/")
+def is_active(user_id: str = Form(...)):
+    try:
+        response = supabase.table("users").select("lending_active").eq("id", user_id).execute()
+        print(response)
+        if not response.data:
+            raise HTTPException(status_code=404, detail="User not found")
+
+        lending_active = response.data[0]["lending_active"]
+
+        hour_index = get_hour_index()
+
+        if hour_index >= len(lending_active):
+            return {"active": False}
+
+        is_active = lending_active[hour_index] == "1"
+
+        return {"active": is_active}
+    except Exception as e:
+        return {"active": False, "error": str(e)}
+    
+def get_active_time_left(user_id):
+    response = supabase.table("users").select("lending_active").eq("id", user_id).execute()
+
+    if not response.data:
+        raise HTTPException(status_code=404, detail="User not found")
+
+    lending_active = response.data[0]["lending_active"]
+    current_index = get_hour_index()
+
+    if current_index >= len(lending_active) or lending_active[current_index] != "1":
+        return 0
+
+    time_left = 0
+    for i in range(current_index, len(lending_active)):
+        if lending_active[i] == "1":
+            time_left += 1
+        else:
+            break
+
+    return time_left
+
+@app.get("/get-best-job/")
+def get_best_job(user_id: str = Form(...), gpu: bool = False):
+    try:
+        time_left = get_active_time_left(user_id)
+        print(time_left)
+        if time_left == 0:
+            return {"job": None, "message": "No active lending time left"}
+
+        query = supabase.table("jobs").select("*").is_("lender_id", None).lte("timeout", time_left)
+
+        if not gpu:
+            query = query.eq("compute_type", "cpu")
+        response = query.order("price", desc=True).limit(1).execute()
+
+        best_job = response.data[0] if response.data else None
+        return {"job_id": best_job['job_id']}
+    except Exception as e:
+        return {"job_id": None, "error": str(e)}

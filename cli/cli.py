@@ -171,18 +171,18 @@ def run_docker_container(container_name, docker_dir, timeout_days, job_id):
         # Process finished, check the return code
         if return_code != 0:
             logging.error(f"Error running Docker container: {process.stderr.read()}")
-            exit(1)
+            raise Exception("Docker container failed")
         
         logging.info("Docker container finished successfully.")
         upload_files(track_files(), job_id)
 
     except subprocess.CalledProcessError as e:
         logging.error(f"Error running Docker container: {e}")
-        exit(1)
+        raise e
 
     except Exception as e:
         logging.error(f"Unexpected error: {e}")
-        exit(1)
+        raise e
 
 def track_files():
     output_dir = "out"
@@ -195,8 +195,8 @@ def track_files():
 def upload_files(files, job_id):
     bucket_name = job_id
    
-    if not s3.list_buckets().get('Buckets', []):
-        s3.create_bucket(Bucket=bucket_name)
+    
+    s3.create_bucket(Bucket=bucket_name)
 
     for file_path in files:
         logging.info(f"Uploading {file_path} to S3 bucket {bucket_name}...")
@@ -219,10 +219,7 @@ def delete_docker_resources(container_name, output_dir):
         shutil.rmtree(output_dir)
 
 async def fetch_container_info(id):
-    url = f"{API_ROUTE}/get-job-info/{id}"
-    async with httpx.AsyncClient() as client:
-        response = await client.get(url)
-    
+    response = requests.get(API_ROUTE+"/get-job-info/", data={"job_id": id})
     if response.status_code == 200:
         job_data = response.json()
         logging.info(f"Job found: {job_data}")
@@ -243,53 +240,80 @@ def get_image_id_from_tar(tar_file_path):
             raise ValueError("manifest.json not found in tar file")
     
 async def grab_task(id):
-    url = f"{API_ROUTE}/take-job?job_id={id}&lender_id={UUID}"
+    response = requests.post(API_ROUTE+"/take-job/", data={"job_id": id, "lender_id": UUID})
 
-    async with httpx.AsyncClient() as client:
-        response = await client.post(url)
     
     if response.status_code == 200:
        
         logging.info(f"Job grabbed: {response.json()}")
         return True
     else:
-        logging.info(f"Error fetching job info: {response.status_code}")
+        logging.info(f"Error grabbing job: {response.status_code}")
         return None
 
 
 async def run_command(id):
-    # data = await fetch_container_info(id)
-    # if not data:
-    #     logging.info("Job not found or job taken.")
-    #     return None
-    # logging.info("container info\n" + data)
-    # user_id = data["user_id"]
-    # compute_type =  data["compute_type"]
-    # timeout = data["timeout"]
-    # docker_dir = data["output_directory"]
+    data = await fetch_container_info(id)
+    if not data:
+        logging.info("Job not found or job taken.")
+        return None
+    
+    if not await grab_task(id):
+        logging.info("Unable to grab task.")
+        return
+
+    docker_dir = data["output_directory"]
+
     global JOB_UUID
     JOB_UUID = id
-    docker_dir = '/app/'
-    container_name = f"{id}.tar" 
+
+    logging.info("Running job...\n", data)
 
     tar_file = download_docker_container(id)
     run_docker_container(get_image_id_from_tar(tar_file), docker_dir, 1, id)
     logging.info("Finished running job")
 
 
-    delete_docker_resources(container_name, "./out")
+    delete_docker_resources(f"{id}.tar", "./out")
     JOB_UUID = None
 
-async def isActive():
-    return True
+def isActive():
+    response = requests.get(API_ROUTE+"/is-active/", data={"user_id": UUID})
+    if response.status_code == 200:
+        dt = response.json()
+        logging.info(f"Is Active: {dt['active']}")
+        return dt['active']
+    else:
+        logging.error(f"Error getting active status: {response.status_code}")
+        return None
 
 
 
 def is_gpu_available():
     return torch.cuda.is_available()
 
+def getBestJob(use_gpu):
+    response = requests.get(API_ROUTE+"/get-best-job/", data={"user_id":UUID,"gpu": use_gpu})
+    if response.status_code == 200:
+        j = response.json()
+        logging.info(f"Best job: {j}")
+        return j['job_id']
+    else:
+        logging.error(f"Error getting best job: {response.status_code}")
+        return None
+
+def freeJob(id):
+    response = requests.post(API_ROUTE+"/free-job/", data={"job_id": id})
+
+    if response.status_code == 200:
+        logging.info(f"Job freed: {response.json()}")
+        return True
+    else:
+        logging.error(f"Error freeing job: {response.status_code}")
+        return None
+
 async def autorun_command():
-    while await isActive():
+    while isActive():
         
     
         use_gpu = is_gpu_available()
@@ -297,21 +321,31 @@ async def autorun_command():
 
         id = getBestJob(use_gpu)
         if not id:
-            logging.info("No jobs available.")
+            print("No jobs available.")
+
+            time.sleep(10)
+
             continue
+
         print("Found best job: ", id)
         
-        run_command(id)
+        try:
+            await run_command(id)
+        except Exception as e:
+            logging.error(f"Error running job: {e}. Skipping.")
+            freeJob(id)
+            continue
 
-        time.sleep(10)
+        time.sleep(5)
 
 
 
 
-    
+
     
 
 def main():
+    
     asyncio.run(configure_logging())
 
     parser = argparse.ArgumentParser(description="Custom CLI with authentication")
@@ -324,7 +358,6 @@ def main():
     plogin = subparsers.add_parser("login", help="Login")
     pcreate_acc = subparsers.add_parser("create_account", help="Create Account")
     pautorun = subparsers.add_parser("autorun", help="Run tasks automatically for a set amount of time")
-    pautorun.add_argument("-t", required=True, help="Amount of time to run tasks for")
 
     global UUID
 
