@@ -8,14 +8,19 @@ import { useRouter } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/contexts/auth-context";
 import { SystemStats } from "@/components/system-stats";
+import { EditSchedule } from "@/components/edit-schedule";
 
 interface Job {
-  id: string;
+  id: number;
   user_id: string;
-  docker_address?: string;
-  status?: string;
-  created_at?: string;
+  job_id?: string;
+  compute_type?: string;
+  timeout?: number;
+  output_directory?: string;
+  lender_id?: string;
   price?: number;
+  created_at?: string;
+  status?: string;
 }
 
 const getStatusBadgeVariant = (status: string | undefined) => {
@@ -39,33 +44,48 @@ export function DashboardContent() {
     if (!user) return;
 
     const fetchJobs = async () => {
-      const { data: uploaded } = await supabase
-        .from("jobs")
-        .select("*")
-        .eq("user_id", user.id)
-        .order("created_at", { ascending: false })
-        .limit(5);
+      try {
+        const { data: uploaded, error: uploadError } = await supabase
+          .from("jobs")
+          .select("*")
+          .eq("user_id", user.id)
+          .order("created_at", { ascending: false })
+          .limit(5);
 
-      const { data: lending } = await supabase
-        .from("jobs")
-        .select("*")
-        .eq("lender_user_id", user.id)
-        .order("created_at", { ascending: false })
-        .limit(5);
+        if (uploadError) {
+          console.error("Error fetching uploaded jobs:", uploadError);
+          return;
+        }
 
-      const spent = (uploaded || []).reduce(
-        (total, job) => total + (job.price || 0),
-        0,
-      );
-      const received = (lending || []).reduce(
-        (total, job) => total + (job.price || 0),
-        0,
-      );
+        const { data: lending, error: lendError } = await supabase
+          .from("jobs")
+          .select("*")
+          .eq("lender_id", user.id)
+          .order("created_at", { ascending: false })
+          .limit(5);
 
-      setUploadedJobs(uploaded || []);
-      setLendingJobs(lending || []);
-      setMoneySpent(spent);
-      setMoneyReceived(received);
+        if (lendError) {
+          console.error("Error fetching lending jobs:", lendError);
+          return;
+        }
+
+        setUploadedJobs(uploaded || []);
+        setLendingJobs(lending || []);
+
+        const spent = (uploaded || []).reduce(
+          (total, job) => total + (job.price || 0),
+          0,
+        );
+        const received = (lending || []).reduce(
+          (total, job) => total + (job.price || 0),
+          0,
+        );
+
+        setMoneySpent(spent);
+        setMoneyReceived(received);
+      } catch (error) {
+        console.error("Error fetching jobs:", error);
+      }
     };
 
     fetchJobs();
@@ -181,6 +201,7 @@ export function DashboardContent() {
         </div>
       </div>
       <SystemStats />
+      <EditSchedule />
     </div>
   );
 }

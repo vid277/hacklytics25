@@ -8,6 +8,7 @@ import { redirect } from "next/navigation";
 export const signUpAction = async (formData: FormData) => {
   const email = formData.get("email")?.toString();
   const password = formData.get("password")?.toString();
+  const displayName = formData.get("display_name")?.toString() || email;
   const supabase = await createClient();
   const origin = (await headers()).get("origin");
 
@@ -19,24 +20,47 @@ export const signUpAction = async (formData: FormData) => {
     );
   }
 
-  const { error } = await supabase.auth.signUp({
+  const { data: authData, error: authError } = await supabase.auth.signUp({
     email,
     password,
     options: {
       emailRedirectTo: `${origin}/auth/callback`,
+      data: {
+        display_name: displayName,
+      },
     },
   });
 
-  if (error) {
-    console.error(error.code + " " + error.message);
-    return encodedRedirect("error", "/sign-up", error.message);
-  } else {
-    return encodedRedirect(
-      "success",
-      "/sign-up",
-      "Thanks for signing up! Please check your email for a verification link.",
-    );
+  if (authError) {
+    console.error(authError.code + " " + authError.message);
+    return encodedRedirect("error", "/sign-up", authError.message);
   }
+
+  const { error: profileError } = await supabase.from("users").upsert(
+    {
+      id: authData.user?.id,
+      email: email,
+      display_name: displayName,
+      created_at: new Date().toISOString(),
+      updated_at: new Date().toISOString(),
+      transactions: [],
+      lending_active: null,
+    },
+    {
+      onConflict: "id",
+    },
+  );
+
+  if (profileError) {
+    console.error("Error creating user profile:", profileError);
+    return encodedRedirect("error", "/sign-up", "Error creating user profile");
+  }
+
+  return encodedRedirect(
+    "success",
+    "/sign-up",
+    "Thanks for signing up! Please check your email for a verification link.",
+  );
 };
 
 export const signInAction = async (formData: FormData) => {

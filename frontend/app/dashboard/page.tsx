@@ -6,11 +6,10 @@ export default async function Dashboard() {
   const supabase = await createClient();
 
   const {
-    data: { user },
-    error,
-  } = await supabase.auth.getUser();
+    data: { session },
+  } = await supabase.auth.getSession();
 
-  if (!user || error) {
+  if (!session) {
     return redirect("/sign-in");
   }
 

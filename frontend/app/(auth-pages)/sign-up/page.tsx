@@ -31,8 +31,8 @@ export default async function SignUp({
   }
 
   return (
-    <form className="flex-1 flex flex-col min-w-64 items-center justify-center w-screen h-screen">
-      <div className="flex flex-col gap-2 items-center w-[30rem]">
+    <div className="flex-1 flex flex-col min-w-64 items-center justify-center w-screen h-screen">
+      <form className="flex flex-col gap-2 items-center w-[30rem]">
         <h1 className="text-4xl font-medium font-oddlini">Sign up</h1>
         <p className="text-sm text-foreground font-hanken items-center">
           Already have an account?{" "}
@@ -48,6 +48,12 @@ export default async function SignUp({
             Email
           </Label>
           <Input name="email" placeholder="you@example.com" required />
+
+          <Label htmlFor="display_name" className="font-hanken">
+            Display Name
+          </Label>
+          <Input name="display_name" placeholder="Your name" />
+
           <Label htmlFor="password" className="font-hanken">
             Password
           </Label>
@@ -55,19 +61,18 @@ export default async function SignUp({
             type="password"
             name="password"
             placeholder="Your password"
-            minLength={6}
             required
           />
           <SubmitButton
+            pendingText="Signing Up..."
             formAction={signUpAction}
-            pendingText="Signing up..."
             className="font-hanken"
           >
             Sign up
           </SubmitButton>
           <FormMessage message={searchParams} />
         </div>
-      </div>
-    </form>
+      </form>
+    </div>
   );
 }
