@@ -2,7 +2,7 @@ import docker
 import boto3
 
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi import FastAPI, File, HTTPException, UploadFile, Form
+from fastapi import FastAPI, File, HTTPException, UploadFile, Form, FileResponse
 
 import base64
 import shutil
@@ -26,6 +26,9 @@ client = docker.from_env()
 UPLOAD_DIR = "uploads"
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 
+DOWNLOAD_DIR = "downloads"
+os.makedirs(DOWNLOAD_DIR, exist_ok=True)
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -33,9 +36,17 @@ app.add_middleware(
     allow_methods=["*"],  
     allow_headers=["*"],  
 )
+ecr_client = boto3.client('ecr')
+response = ecr_client.get_authorization_token()
+auth_token = response['authorizationData'][0]['authorizationToken']
+decoded_token = base64.b64decode(auth_token).decode('utf-8')    
+username, password = decoded_token.split(':')
 
-def insert_job(user_id, job_id, compute_type, timeout, output_directory, price):
-    supabase.table("jobs").insert([{"user_id": user_id, "job_id": job_id, "compute_type": compute_type, "timeout": timeout, "output_directory": output_directory, "price": price}]).execute()
+registry = response['authorizationData'][0]['proxyEndpoint']
+client.login(username=username, password=password, registry=registry)
+
+def insert_job(user_id, job_id, compute_type, timeout, output_directory, price, filename):
+    supabase.table("jobs").insert([{"user_id": user_id, "job_id": job_id, "compute_type": compute_type, "timeout": timeout, "output_directory": output_directory, "price": price, "filename": filename}]).execute()
 
 def fetch_job(job_id):
     response = supabase.table("jobs").select("*").eq("job_id", job_id).execute()
@@ -43,8 +54,8 @@ def fetch_job(job_id):
 
 @app.post("/create-job/")
 async def create_job(user_id: str = Form(...), file: UploadFile = File(...), compute_type = 'cpu', timeout = 1, output_directory = 'output'):
-   
-    file_path = os.path.join(UPLOAD_DIR, f"{user_id}.tar")
+    filename = file.filename
+    file_path = os.path.join(UPLOAD_DIR, filename)
 
     with open(file_path, "wb") as buffer:
         shutil.copyfileobj(file.file, buffer)
@@ -55,16 +66,10 @@ async def create_job(user_id: str = Form(...), file: UploadFile = File(...), com
         with open(file_path, "rb") as image_file:
             image = client.images.load(image_file.read())[0]  # Load and get first image
         tag = f"308832414989.dkr.ecr.us-east-1.amazonaws.com/hacklytics/storage:{job_id}"
+        
         image.tag(tag)
 
-        ecr_client = boto3.client('ecr')
-        response = ecr_client.get_authorization_token()
-        auth_token = response['authorizationData'][0]['authorizationToken']
-        decoded_token = base64.b64decode(auth_token).decode('utf-8')    
-        username, password = decoded_token.split(':')
-
-        registry = response['authorizationData'][0]['proxyEndpoint']
-        client.login(username=username, password=password, registry=registry)
+        
         push_logs = client.images.push(tag)
 
 
@@ -72,7 +77,7 @@ async def create_job(user_id: str = Form(...), file: UploadFile = File(...), com
         return {"status": "error", "message": str(e)}
        
     
-    insert_job(user_id, job_id, compute_type, timeout, output_directory, price)
+    insert_job(user_id, job_id, compute_type, timeout, output_directory, price, filename)
 
     return {"status": "success", "message": f"Job id {job_id} created successfully"}
 
@@ -99,3 +104,15 @@ async def get_job_info(job_id: str):
         timeout=job_data['timeout'],
         output_directory=job_data['output_directory']
     )
+
+@app.get("/retrieve-container")
+def retrieve_container(job_id, image_name):
+    image_uri = f"308832414989.dkr.ecr.us-east-1.amazonaws.com/hacklytics/storage:{job_id}"
+    client.images.pull(image_uri)
+    tar_file_path = f"downloads/image_name.tar"
+    with open(tar_file_path, "wb") as f:
+        for chunk in client.images.get(image_uri).save():
+            f.write(chunk)
+    return FileResponse(tar_file_path, media_type='application/x-tar', filename=f"{image_name}.tar")
+    
+
