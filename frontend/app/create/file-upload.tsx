@@ -7,7 +7,7 @@ import { UploadCloud, FileIcon, XCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface UploadPageProps {
-  onFileSizeChange: (size: number) => void;
+  onFileSizeChange: (size: number, file: File) => void;
 }
 
 export default function UploadPage({ onFileSizeChange }: UploadPageProps) {
@@ -21,7 +21,7 @@ export default function UploadPage({ onFileSizeChange }: UploadPageProps) {
       if (selectedFile && selectedFile.name.endsWith(".tar")) {
         setFile(selectedFile);
         setError(null);
-        onFileSizeChange(selectedFile.size);
+        onFileSizeChange(selectedFile.size, selectedFile);
       } else {
         setFile(null);
         setError("Please select a valid .tar file");
