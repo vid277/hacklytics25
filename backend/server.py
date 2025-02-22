@@ -88,7 +88,7 @@ class JobResponse(BaseModel):
     output_directory: str
     price: float
 
-@app.get("/get-job-info/{job_id}", response_model=JobResponse)
+@app.get("/get-job-info/", response_model=JobResponse)
 async def get_job_info(job_id: str):
     response = fetch_job(job_id)
 
@@ -125,8 +125,18 @@ def take_job(job_id: str, lender_id: str):
     except Exception as e:
         return {"status": "error", "message": str(e)}
 
+@app.post("/append-logs/")
+def append_logs(job_id: str, logs: str):
+    try:
+        response = supabase.table("jobs").select("logs").eq("job_id", job_id).execute()
+        current_logs = response.data[0]['logs'] if response.data else ""
+        updated_logs = current_logs + logs
+        supabase.table("jobs").update({"logs": updated_logs}).eq("job_id", job_id).execute()
+        return {"status": "success", "message": "Logs updated successfully"}
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
 
-
-
-    
-
+@app.get("/get-log/")
+def get_logs(job_id: str):
+    response = supabase.table("jobs").select("logs").eq("job_id", job_id).execute()
+    return response.data[0]['logs'] if response.data else ""
