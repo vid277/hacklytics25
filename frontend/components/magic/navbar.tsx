@@ -4,7 +4,7 @@ import Link from "next/link";
 import { motion } from "framer-motion";
 import { UserRoundIcon } from "lucide-react";
 import { User } from "@supabase/supabase-js";
-import { signOut } from "@/app/actions";
+import { signOutAction } from "@/app/actions";
 
 interface NavbarProps {
   user?: User | null;
@@ -17,14 +17,42 @@ export default function Navbar({ user }: NavbarProps) {
         <Link href="/" className="text-2xl font-semibold font-oddlini">
           Hacklytics 2025
         </Link>
+        {user && (
+          <nav className="flex items-center gap-4">
+            <Link 
+              href="/dashboard" 
+              className="text-sm font-medium hover:text-foreground/80"
+            >
+              Dashboard
+            </Link>
+            <Link 
+              href="/jobs" 
+              className="text-sm font-medium hover:text-foreground/80"
+            >
+              Jobs
+            </Link>
+            <Link 
+              href="/upload" 
+              className="text-sm font-medium hover:text-foreground/80"
+            >
+              Upload
+            </Link>
+          </nav>
+        )}
       </div>
       <div className="flex items-center justify-center gap-4">
         {user ? (
-          <form action={signOut}>
-            <button className="text-sm font-medium border border-foreground text-foreground px-4 py-2 pt-2.5 rounded-lg flex items-center justify-center font-oddlini hover:bg-foreground/5">
-              Sign Out
-            </button>
-          </form>
+          <div className="flex items-center gap-4">
+            <div className="flex items-center gap-2">
+              <UserRoundIcon className="size-4" />
+              <span className="text-sm font-medium">{user.email}</span>
+            </div>
+            <form action={signOutAction}>
+              <button className="text-sm font-medium border border-foreground text-foreground px-4 py-2 pt-2.5 rounded-lg flex items-center justify-center font-oddlini hover:bg-foreground/5">
+                Sign Out
+              </button>
+            </form>
+          </div>
         ) : (
           <div className="flex items-center gap-4">
             <Link

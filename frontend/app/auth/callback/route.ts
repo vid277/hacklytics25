@@ -14,6 +14,6 @@ export async function GET(request: Request) {
     await supabase.auth.exchangeCodeForSession(code);
   }
 
-  // Always redirect to upload page after auth
-  return NextResponse.redirect(`${origin}/upload`);
+  // Redirect to dashboard instead of upload
+  return NextResponse.redirect(`${origin}/dashboard`);
 }
