@@ -126,5 +126,7 @@ def take_job(job_id: str, lender_id: str):
         return {"status": "error", "message": str(e)}
 
 
+
+
     
 
