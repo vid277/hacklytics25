@@ -1,0 +1,3 @@
+[submodule "docker-hello-world"]
+    path = docker-hello-world
+    url = https://github.com/jonashackt/docker-hello-world.git
