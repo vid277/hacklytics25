@@ -3,12 +3,8 @@
 import Link from "next/link";
 import { motion } from "framer-motion";
 import { UserRoundIcon } from "lucide-react";
-import { useState } from "react";
 
-export default function Navbar({
-    openModal,
-    home = false,
-  }: Readonly<{ openModal: () => void; home?: boolean }>) {
+export default function Navbar({ home = false }: Readonly<{ home?: boolean }>) {
   const goToSignup = () => {
     window.location.href = "/";
   };
@@ -21,13 +17,12 @@ export default function Navbar({
     >
       <div className="flex items-center gap-6 font-oddlini justify-center mt-0.5">
         <Link href="/" className="text-2xl font-semibold font-oddlini">
-          Virsitile
+          Hacklytics 2025
         </Link>
       </div>
       <div className="flex items-center justify-center">
         <button
-            
-            onClick={home ? openModal : goToSignup}
+          onClick={goToSignup}
           className="text-sm font-medium bg-foreground text-background px-4 py-2 pt-2.5 rounded-lg flex items-center justify-center font-oddlini hover:bg-foreground/80"
         >
           <UserRoundIcon className="size-3 mr-2 mb-0.5" />
