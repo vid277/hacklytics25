@@ -3,7 +3,7 @@ import boto3
 ECR_URI = "864899844109.dkr.ecr.us-east-1.amazonaws.com/hacklytics25/storage"
 
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi import FastAPI, File, HTTPException, UploadFile, Form, FileResponse
+from fastapi import FastAPI, File, HTTPException, UploadFile, Form
 
 import base64
 import shutil
@@ -47,7 +47,7 @@ registry = response['authorizationData'][0]['proxyEndpoint']
 client.login(username=username, password=password, registry=registry)
 
 def insert_job(user_id, job_id, compute_type, timeout, output_directory, price, filename):
-    supabase.table("jobs").insert([{"user_id": user_id, "job_id": job_id, "compute_type": compute_type, "timeout": timeout, "output_directory": output_directory, "price": price, "filename": filename}]).execute()
+    supabase.table("jobs").insert([{"user_id": user_id, "job_id": job_id, "compute_type": compute_type, "timeout": timeout, "output_directory": output_directory, "price": price}]).execute()
 
 def fetch_job(job_id):
     response = supabase.table("jobs").select("*").eq("job_id", job_id).execute()
@@ -67,6 +67,8 @@ async def create_job(user_id: str = Form(...), file: UploadFile = File(...), com
         with open(file_path, "rb") as image_file:
             image = client.images.load(image_file.read())[0]  # Load and get first image
         tag = f"{ECR_URI}:{job_id}"
+
+        
         
         image.tag(tag)
 
@@ -114,5 +116,13 @@ def retrieve_container(job_id, image_name):
     with open(tar_file_path, "wb") as f:
         for chunk in client.images.get(image_uri).save():
             f.write(chunk)
+
+@app.post("/take-job/")
+def take_job(job_id: str, lender_id: str):
+    try:
+        supabase.table("jobs").update({"lender_id": lender_id}).eq("job_id", job_id).execute()
+        return {"status": "success", "message": f"Job id {job_id} taken by lender {lender_id}"}
+    except Exception as e:
+        return {"status": "error", "message": str(e)}
     
 
