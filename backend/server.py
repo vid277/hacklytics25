@@ -89,7 +89,7 @@ class JobResponse(BaseModel):
     price: float
 
 @app.get("/get-job-info/", response_model=JobResponse)
-async def get_job_info(job_id: str):
+async def get_job_info(job_id: str = Form(...)):
     response = fetch_job(job_id)
 
     if not response:
@@ -118,25 +118,32 @@ def retrieve_container(job_id, image_name):
             f.write(chunk)
 
 @app.post("/take-job/")
-def take_job(job_id: str, lender_id: str):
+def take_job(job_id: str = Form(...), lender_id: str = Form(...)):
     try:
         supabase.table("jobs").update({"lender_id": lender_id}).eq("job_id", job_id).execute()
         return {"status": "success", "message": f"Job id {job_id} taken by lender {lender_id}"}
     except Exception as e:
         return {"status": "error", "message": str(e)}
-
+    
 @app.post("/append-logs/")
-def append_logs(job_id: str, logs: str):
+def append_logs(job_id: str = Form(...), logs: str = Form(...)):
     try:
-        response = supabase.table("jobs").select("logs").eq("job_id", job_id).execute()
-        current_logs = response.data[0]['logs'] if response.data else ""
-        updated_logs = current_logs + logs
-        supabase.table("jobs").update({"logs": updated_logs}).eq("job_id", job_id).execute()
+        response = supabase.table("logs").select("logs").eq("job_id", job_id).execute()
+        
+        if response.data:  # Record exists, update it
+            current_logs = response.data[0]['logs']
+            updated_logs = current_logs + logs
+            supabase.table("logs").update({"logs": updated_logs}).eq("job_id", job_id).execute()
+        else:  # Record does not exist, insert new
+            supabase.table("logs").insert({"job_id": job_id, "logs": logs}).execute()
+        
         return {"status": "success", "message": "Logs updated successfully"}
+    
     except Exception as e:
         return {"status": "error", "message": str(e)}
 
+
 @app.get("/get-log/")
-def get_logs(job_id: str):
-    response = supabase.table("jobs").select("logs").eq("job_id", job_id).execute()
+def get_logs(job_id: str = Form(...)):
+    response = supabase.table("logs").select("logs").eq("job_id", job_id).execute()
     return response.data[0]['logs'] if response.data else ""
