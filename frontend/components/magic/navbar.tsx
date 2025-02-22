@@ -12,12 +12,7 @@ interface NavbarProps {
 
 export default function Navbar({ user }: NavbarProps) {
   return (
-    <motion.div
-      initial={{ y: -100, opacity: 0 }}
-      animate={{ y: 0, opacity: 1 }}
-      transition={{ duration: 0.5 }}
-      className="flex h-16 px-10 items-center justify-between border-b sticky top-0 z-[999] bg-white"
-    >
+    <motion.div className="flex h-16 px-10 items-center justify-between border-b sticky top-0 z-[999] bg-white">
       <div className="flex items-center gap-6 font-oddlini justify-center mt-0.5">
         <Link href="/" className="text-2xl font-semibold font-oddlini">
           Hacklytics 2025

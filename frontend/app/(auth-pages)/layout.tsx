@@ -1,11 +1,16 @@
-export default async function Layout({
+import { StepsProgress } from "@/components/steps-progress";
+
+export default function AuthLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
   return (
-    <div className="w-full flex flex-col gap-12 items-start h-[calc(100vh-10rem)]">
-      {children}
+    <div className="relative min-h-screen">
+      <div className="absolute inset-0">
+        <StepsProgress />
+        {children}
+      </div>
     </div>
   );
 }
