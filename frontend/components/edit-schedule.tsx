@@ -7,6 +7,7 @@ import { Clock, Check, ChevronDown, ChevronUp } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/utils/supabase/client";
 import { useAuth } from "@/contexts/auth-context";
+import { useToast } from "@/components/hooks/use-toast";
 
 interface TimeSlot {
   hour: number;
@@ -30,10 +31,19 @@ interface DragState {
 }
 
 const HOURS = Array.from({ length: 24 }, (_, i) => i);
-const DAYS = ["monday", "tuesday", "wednesday", "thursday", "friday"];
+const DAYS = [
+  "monday",
+  "tuesday",
+  "wednesday",
+  "thursday",
+  "friday",
+  "saturday",
+  "sunday",
+];
 
 export function EditSchedule() {
   const { user, loading: authLoading, session } = useAuth();
+  const { toast } = useToast();
   const [schedule, setSchedule] = useState<WeekSchedule>(
     DAYS.reduce(
       (acc, day) => ({
@@ -214,8 +224,18 @@ export function EditSchedule() {
             .select();
 
           if (insertError) {
+            toast({
+              variant: "destructive",
+              title: "Error saving schedule",
+              description: "Failed to create new schedule. Please try again.",
+            });
             throw insertError;
           }
+
+          toast({
+            title: "Schedule created",
+            description: "Your lending schedule has been created successfully.",
+          });
           return;
         }
         throw fetchError;
@@ -231,11 +251,25 @@ export function EditSchedule() {
         .select();
 
       if (updateError) {
-        console.error("Update failed:", updateError);
+        toast({
+          variant: "destructive",
+          title: "Error saving schedule",
+          description: "Failed to update schedule. Please try again.",
+        });
         throw updateError;
       }
+
+      toast({
+        title: "Schedule updated!",
+        description: "Your lending schedule has been updated.",
+      });
     } catch (error) {
       console.error("Error saving schedule:", error);
+      toast({
+        variant: "destructive",
+        title: "Error saving schedule",
+        description: "An unexpected error occurred. Please try again.",
+      });
     }
   };
 
