@@ -1,16 +1,18 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useCallback } from "react";
 import { Button } from "@/components/ui/button";
-import { StepsProgress } from "@/components/steps-progress";
+import { useDropzone } from "react-dropzone";
+import { UploadCloud, FileIcon, XCircle } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 export default function UploadPage() {
   const [file, setFile] = useState<File | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const selectedFile = e.target.files?.[0];
+  const onDrop = useCallback((acceptedFiles: File[]) => {
+    const selectedFile = acceptedFiles[0];
     if (selectedFile && selectedFile.name.endsWith(".tar")) {
       setFile(selectedFile);
       setError(null);
@@ -18,7 +20,15 @@ export default function UploadPage() {
       setFile(null);
       setError("Please select a valid .tar file");
     }
-  };
+  }, []);
+
+  const { getRootProps, getInputProps, isDragActive } = useDropzone({
+    onDrop,
+    accept: {
+      "application/x-tar": [".tar"],
+    },
+    maxFiles: 1,
+  });
 
   const handleUpload = async () => {
     if (!file) {
@@ -38,50 +48,102 @@ export default function UploadPage() {
     }
   };
 
+  const clearFile = () => {
+    setFile(null);
+    setError(null);
+  };
+
   return (
-    <form className="flex-1 flex flex-col min-w-64 items-center justify-center w-screen h-screen">
-      <StepsProgress />
-      <div className="flex flex-col gap-2 items-center w-[30rem]">
-        <h1 className="text-4xl font-medium font-oddlini">
-          Upload Docker Image
-        </h1>
-        <p className="text-sm text-foreground font-hanken items-center mt-1">
-          Upload your Docker image as a .tar file for deployment
-        </p>
+    <div className="flex-1 flex flex-col items-center justify-center p-8">
+      <div className="w-full max-w-2xl mx-auto">
+        <div className="text-center mb-8">
+          <h1 className="text-4xl font-medium font-oddlini mb-3">
+            Upload Docker Image
+          </h1>
+          <p className="text-sm text-muted-foreground font-hanken">
+            Upload your Docker image as a .tar file for deployment
+          </p>
+        </div>
 
-        <div className="flex flex-col gap-2 [&>input]:mb-3 mt-4 w-full">
-          <label htmlFor="file-upload" className="font-hanken">
-            Docker Image File
-          </label>
-          <input
-            id="file-upload"
-            type="file"
-            accept=".tar"
-            onChange={handleFileChange}
-            className="border rounded p-2 font-hanken"
-            disabled={isUploading}
-          />
+        <div className="space-y-6">
+          <div
+            {...getRootProps()}
+            className={cn(
+              "border-2 border-dashed rounded-lg p-8 transition-colors duration-200 ease-in-out cursor-pointer",
+              isDragActive
+                ? "border-primary bg-primary/5"
+                : "border-gray-200 hover:border-primary/50",
+              file && "border-primary/50 bg-primary/5"
+            )}
+          >
+            <input {...getInputProps()} />
+            <div className="flex flex-col items-center justify-center gap-4">
+              <UploadCloud
+                className={cn(
+                  "h-12 w-12 text-gray-400",
+                  isDragActive && "text-primary",
+                  file && "text-primary"
+                )}
+              />
+              {!file && (
+                <div className="text-center">
+                  <p className="text-sm font-medium text-gray-700 font-hanken">
+                    {isDragActive
+                      ? "Drop the file here"
+                      : "Drag and drop your .tar file here"}
+                  </p>
+                  <p className="text-xs text-gray-500 font-hanken mt-1">
+                    or click to select a file
+                  </p>
+                </div>
+              )}
+              {file && (
+                <div className="flex items-center gap-3 bg-white rounded-lg p-3 w-full max-w-md">
+                  <FileIcon className="h-8 w-8 text-primary flex-shrink-0" />
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-medium text-gray-900 truncate font-hanken">
+                      {file.name}
+                    </p>
+                    <p className="text-xs text-gray-500 font-hanken">
+                      {(file.size / (1024 * 1024)).toFixed(2)} MB
+                    </p>
+                  </div>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      clearFile();
+                    }}
+                    className="text-gray-400 hover:text-gray-500"
+                  >
+                    <XCircle className="h-5 w-5" />
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
 
-          {error && <p className="text-red-500 text-sm font-hanken">{error}</p>}
-
-          {file && (
-            <div className="bg-accent/30 p-3 rounded">
-              <p className="text-sm font-hanken">Selected file: {file.name}</p>
-              <p className="text-xs text-muted-foreground font-hanken">
-                Size: {(file.size / (1024 * 1024)).toFixed(2)} MB
-              </p>
+          {error && (
+            <div className="text-red-500 text-sm font-hanken text-center">
+              {error}
             </div>
           )}
 
           <Button
             onClick={handleUpload}
             disabled={!file || isUploading}
-            className="w-full font-hanken h-10 mt-2"
+            className="w-full font-hanken h-11"
           >
-            {isUploading ? "Uploading..." : "Upload Docker Image"}
+            {isUploading ? (
+              <>
+                <span className="loading loading-spinner loading-sm mr-2"></span>
+                Uploading...
+              </>
+            ) : (
+              "Upload Docker Image"
+            )}
           </Button>
         </div>
       </div>
-    </form>
+    </div>
   );
 }
