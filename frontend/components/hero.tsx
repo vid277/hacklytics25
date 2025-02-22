@@ -1,14 +1,22 @@
 "use client";
 import Navbar from "./magic/navbar";
+import { useState } from "react";
+import Hero from "@/pages/hero";
 
-export default function Header() {
+export const useModal = () => {
+  const [isModalOpen, setIsModalOpen] = useState(false);
+
+  const openModal = () => setIsModalOpen(true);
+  const closeModal = () => setIsModalOpen(false);
+
+  return { isModalOpen, openModal, closeModal };
+};
+
+export default function Home() {
   return (
-    <>
-      <Navbar openModal={() => {}} />
-      <div className="flex flex-col gap-16 items-center">
-        <h1 className="text-4xl font-bold">Hacklytics 2025</h1>
-        <p className="text-2xl">The hackathon for the future of analytics</p>
-      </div>
-    </>
+    <div className="scroll-smooth [scrollbar-width:none] [-ms-overflow-style:none] [&::-webkit-scrollbar]:hidden">
+      <Navbar home={true} />
+      <Hero />
+    </div>
   );
 }
