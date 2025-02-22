@@ -6,6 +6,7 @@ import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
+import { useAuth } from "@/contexts/auth-context";
 
 interface Job {
   id: string;
@@ -25,21 +26,15 @@ const getStatusBadgeVariant = (status: string | undefined) => {
 };
 
 export function DashboardContent() {
+  const { user } = useAuth();
   const [uploadedJobs, setUploadedJobs] = useState<Job[]>([]);
   const [lendingJobs, setLendingJobs] = useState<Job[]>([]);
   const router = useRouter();
 
   useEffect(() => {
+    if (!user) return;
+
     const fetchJobs = async () => {
-      const {
-        data: { user },
-        error,
-      } = await supabase.auth.getUser();
-
-      if (!user || error) {
-        return;
-      }
-
       const { data: uploaded } = await supabase
         .from("jobs")
         .select("*")
@@ -59,7 +54,7 @@ export function DashboardContent() {
     };
 
     fetchJobs();
-  }, []);
+  }, [user]);
 
   return (
     <div className="flex-1 flex flex-col gap-6 p-4 md:p-8">
@@ -76,7 +71,6 @@ export function DashboardContent() {
       </div>
 
       <div className="grid md:grid-cols-2 gap-6">
-        {/* Uploaded Jobs Section */}
         <div className="bg-white rounded-lg shadow p-6">
           <h2 className="text-2xl font-medium font-oddlini mb-4">
             Your Uploads

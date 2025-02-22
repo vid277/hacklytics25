@@ -53,6 +53,15 @@ export const signInAction = async (formData: FormData) => {
     return encodedRedirect("error", "/sign-in", error.message);
   }
 
+  const {
+    data: { user },
+    error: userError,
+  } = await supabase.auth.getUser();
+
+  if (!user || userError) {
+    return encodedRedirect("error", "/sign-in", "Authentication failed");
+  }
+
   return redirect("/dashboard");
 };
 
@@ -129,6 +138,16 @@ export const resetPasswordAction = async (formData: FormData) => {
 
 export const signOutAction = async () => {
   const supabase = await createClient();
+
   await supabase.auth.signOut();
+
+  const {
+    data: { user },
+  } = await supabase.auth.getUser();
+
+  if (user) {
+    return encodedRedirect("error", "/dashboard", "Sign out failed");
+  }
+
   return redirect("/sign-in");
 };
