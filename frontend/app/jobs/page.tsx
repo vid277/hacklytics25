@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from 'react';
 import { supabase } from '../../utils/supabase/client';
+import { useRouter } from 'next/navigation';
 
 interface Job {
   id: string;
@@ -19,27 +20,53 @@ interface Job {
 export default function JobsPage() {
   const [jobs, setJobs] = useState<Job[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const router = useRouter();
 
   useEffect(() => {
-    const fetchJobs = async () => {
-      const { data, error } = await supabase.from('jobs').select('*');
-      if (error) {
-        setError(error.message);
-      } else if (data) {
-        setJobs(data);
+    const checkAuth = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) {
+        router.push('/sign-in');
+      } else {
+        setIsAuthenticated(true);
+        // Only fetch jobs if user is authenticated
+        const { data, error } = await supabase.from('jobs').select('*');
+        if (error) {
+          setError(error.message);
+        } else if (data) {
+          setJobs(data);
+        }
       }
+      setIsLoading(false);
     };
-    fetchJobs();
-  }, []);
+
+    checkAuth();
+  }, [router]);
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="text-center">Loading...</div>
+      </div>
+    );
+  }
+
+  if (!isAuthenticated) {
+    return null; // Don't render anything while redirecting
+  }
 
   if (error) {
     return <div>Error: {error}</div>;
   }
 
   return (
-    <div>
-      <h1>Jobs (Client-Side Rendering)</h1>
-      <pre>{JSON.stringify(jobs, null, 2)}</pre>
+    <div className="p-4">
+      <h1 className="text-2xl font-bold mb-4">Jobs</h1>
+      <div className="bg-white rounded-lg shadow p-4">
+        <pre className="overflow-auto">{JSON.stringify(jobs, null, 2)}</pre>
+      </div>
     </div>
   );
 }
