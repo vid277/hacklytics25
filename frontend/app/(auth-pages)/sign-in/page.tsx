@@ -6,13 +6,16 @@ import { Label } from "@/components/ui/label";
 import Link from "next/link";
 import { createClient } from "@/utils/supabase/server";
 import { redirect } from "next/navigation";
-import { StepsProgress } from "@/components/steps-progress";
 
-export default async function SignIn({
-  searchParams,
-}: {
-  searchParams: { message?: string; error?: string; success?: string };
-}) {
+interface SignInPageProps {
+  searchParams: {
+    message?: string;
+    error?: string;
+    success?: string;
+  };
+}
+
+export default async function SignIn({ searchParams }: SignInPageProps) {
   const supabase = await createClient();
 
   const {
@@ -24,15 +27,16 @@ export default async function SignIn({
     return redirect("/dashboard");
   }
 
-  const message = {
-    message: searchParams.message,
-    error: searchParams.error,
-    success: searchParams.success,
+  const { message, error: searchError, success } = searchParams;
+
+  const messageObj = {
+    message,
+    error: searchError,
+    success,
   };
 
   return (
     <form className="flex-1 flex flex-col min-w-64 items-center justify-center w-screen h-screen">
-      <StepsProgress />
       <div className="flex flex-col gap-2 items-center w-[30rem]">
         <h1 className="text-4xl font-medium font-oddlini">Sign in</h1>
         <p className="text-sm text-foreground font-hanken items-center">
@@ -73,7 +77,7 @@ export default async function SignIn({
           >
             Sign in
           </SubmitButton>
-          <FormMessage message={message} />
+          <FormMessage message={messageObj} />
         </div>
       </div>
     </form>

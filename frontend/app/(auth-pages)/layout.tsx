@@ -1,5 +1,3 @@
-import { StepsProgress } from "@/components/steps-progress";
-
 export default function AuthLayout({
   children,
 }: {
