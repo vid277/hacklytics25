@@ -6,8 +6,17 @@ import { Button } from "@/components/ui/button";
 import Link from "next/link";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
-import { Loader2, Clock, Server, HardDrive } from "lucide-react";
-import { motion } from "framer-motion";
+import { Loader2, Clock, Server } from "lucide-react";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from "@/components/ui/dialog";
+import { useAuth } from "@/contexts/auth-context";
+import { useToast } from "@/components/hooks/use-toast";
 
 interface Job {
   id: number;
@@ -32,19 +41,22 @@ const getStatusBadgeVariant = (status: string | undefined) => {
 };
 
 export function JobsContent() {
+  const { user } = useAuth();
+  const { toast } = useToast();
   const [mounted, setMounted] = useState(false);
   const [jobs, setJobs] = useState<Job[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [selectedJob, setSelectedJob] = useState<Job | null>(null);
-  const [showDetails, setShowDetails] = useState(false);
+  const [showClaimDialog, setShowClaimDialog] = useState(false);
+  const [isClaimLoading, setIsClaimLoading] = useState(false);
 
   useEffect(() => {
     setMounted(true);
   }, []);
 
   useEffect(() => {
-    if (!mounted) return;
+    if (!mounted || !user) return;
 
     const fetchJobs = async () => {
       setIsLoading(true);
@@ -52,6 +64,8 @@ export function JobsContent() {
         const { data, error } = await supabase
           .from("jobs")
           .select("*")
+          .is("lender_id", null)
+          .neq("user_id", user.id)
           .order("created_at", { ascending: false });
 
         if (error) throw error;
@@ -64,7 +78,60 @@ export function JobsContent() {
     };
 
     fetchJobs();
-  }, [mounted]);
+  }, [mounted, user]);
+
+  const handleClaimJob = async (job: Job) => {
+    if (!user) {
+      toast({
+        title: "Authentication required",
+        description: "Please sign in to claim jobs",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setIsClaimLoading(true);
+    try {
+      const { error: updateError } = await supabase
+        .from("jobs")
+        .update({ lender_id: user.id })
+        .eq("id", job.id);
+
+      if (updateError) {
+        throw new Error("Failed to claim job");
+      }
+
+      toast({
+        title: "Job claimed successfully",
+        description: "You can now process this job",
+      });
+
+      const { data: updatedJobs, error: fetchError } = await supabase
+        .from("jobs")
+        .select("*")
+        .is("lender_id", null)
+        .neq("user_id", user.id)
+        .order("created_at", { ascending: false });
+
+      if (fetchError) {
+        throw new Error("Failed to refresh jobs list");
+      }
+
+      setJobs(updatedJobs || []);
+      setShowClaimDialog(false);
+      setSelectedJob(null);
+    } catch (err) {
+      const errorMessage =
+        err instanceof Error ? err.message : "An error occurred";
+      toast({
+        title: "Failed to claim job",
+        description: errorMessage,
+        variant: "destructive",
+      });
+    } finally {
+      setIsClaimLoading(false);
+    }
+  };
 
   if (!mounted) return null;
 
@@ -181,10 +248,87 @@ export function JobsContent() {
                   </span>
                 </div>
               </div>
+
+              <div className="mt-4">
+                <Button
+                  className="w-full"
+                  onClick={() => {
+                    setSelectedJob(job);
+                    setShowClaimDialog(true);
+                  }}
+                  disabled={
+                    job.status === "claimed" ||
+                    job.status === "completed" ||
+                    job.lender_id === user?.id
+                  }
+                >
+                  {job.lender_id === user?.id
+                    ? "Your Job"
+                    : job.status === "claimed"
+                      ? "Already Claimed"
+                      : "Claim Job"}
+                </Button>
+              </div>
             </Card>
           ))}
         </div>
       )}
+
+      <Dialog open={showClaimDialog} onOpenChange={setShowClaimDialog}>
+        <DialogContent className="sm:max-w-[425px]">
+          <DialogHeader>
+            <DialogTitle>Claim Job</DialogTitle>
+            <DialogDescription>
+              Are you sure you want to claim this job? You'll be responsible for
+              processing it.
+            </DialogDescription>
+          </DialogHeader>
+
+          {selectedJob && (
+            <div className="py-4">
+              <div className="space-y-4">
+                <div>
+                  <p className="text-sm font-medium">Job ID</p>
+                  <p className="text-sm text-muted-foreground break-all">
+                    {selectedJob.job_id || "N/A"}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-sm font-medium">Compute Type</p>
+                  <p className="text-sm text-muted-foreground">
+                    {selectedJob.compute_type || "Standard"}
+                  </p>
+                </div>
+                <div>
+                  <p className="text-sm font-medium">Price</p>
+                  <p className="text-sm text-muted-foreground">
+                    ${selectedJob.price?.toFixed(2) || "0.00"}
+                  </p>
+                </div>
+              </div>
+            </div>
+          )}
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowClaimDialog(false)}>
+              Cancel
+            </Button>
+            <Button
+              onClick={() => selectedJob && handleClaimJob(selectedJob)}
+              disabled={isClaimLoading}
+            >
+              {isClaimLoading ? (
+                <>
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                  Claiming...
+                </>
+              ) : (
+                "Claim Job"
+              )}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
