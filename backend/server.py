@@ -1,5 +1,6 @@
 import docker
 import boto3
+ECR_URI = "308832414989.dkr.ecr.us-east-1.amazonaws.com/hacklytics/storage"
 
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi import FastAPI, File, HTTPException, UploadFile, Form, FileResponse
@@ -65,7 +66,7 @@ async def create_job(user_id: str = Form(...), file: UploadFile = File(...), com
     try:
         with open(file_path, "rb") as image_file:
             image = client.images.load(image_file.read())[0]  # Load and get first image
-        tag = f"308832414989.dkr.ecr.us-east-1.amazonaws.com/hacklytics/storage:{job_id}"
+        tag = f"{ECR_URI}:{job_id}"
         
         image.tag(tag)
 
@@ -105,14 +106,13 @@ async def get_job_info(job_id: str):
         output_directory=job_data['output_directory']
     )
 
-@app.get("/retrieve-container")
+
 def retrieve_container(job_id, image_name):
-    image_uri = f"308832414989.dkr.ecr.us-east-1.amazonaws.com/hacklytics/storage:{job_id}"
+    image_uri = f"{ECR_URI}:{job_id}"
     client.images.pull(image_uri)
-    tar_file_path = f"downloads/image_name.tar"
+    tar_file_path = f"{image_name}.tar"
     with open(tar_file_path, "wb") as f:
         for chunk in client.images.get(image_uri).save():
             f.write(chunk)
-    return FileResponse(tar_file_path, media_type='application/x-tar', filename=f"{image_name}.tar")
     
 
