@@ -59,7 +59,7 @@ export default async function AuthButton() {
           <Link href="/jobs">Jobs</Link>
         </Button>
         <Button asChild variant="outline" size="sm">
-          <Link href="/upload">Upload</Link>
+          <Link href="/create">Upload</Link>
         </Button>
       </nav>
       <div className="flex items-center gap-2">
