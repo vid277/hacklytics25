@@ -54,9 +54,9 @@ export default function UploadPage() {
   };
 
   return (
-    <div className="flex-1 flex flex-col items-center justify-center p-8">
+    <div className="flex-1 flex flex-col items-center justify-end p-4">
       <div className="w-full max-w-2xl mx-auto">
-        <div className="text-center mb-8">
+        <div className="text-center mb-4">
           <h1 className="text-4xl font-medium font-oddlini mb-3">
             Upload Docker Image
           </h1>
@@ -73,7 +73,7 @@ export default function UploadPage() {
               isDragActive
                 ? "border-primary bg-primary/5"
                 : "border-gray-200 hover:border-primary/50",
-              file && "border-primary/50 bg-primary/5"
+              file && "border-primary/50 bg-primary/5",
             )}
           >
             <input {...getInputProps()} />
@@ -82,7 +82,7 @@ export default function UploadPage() {
                 className={cn(
                   "h-12 w-12 text-gray-400",
                   isDragActive && "text-primary",
-                  file && "text-primary"
+                  file && "text-primary",
                 )}
               />
               {!file && (

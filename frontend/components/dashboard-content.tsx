@@ -97,7 +97,7 @@ export function DashboardContent() {
         <h1 className="text-4xl font-medium font-oddlini">Dashboard</h1>
         <div className="flex gap-4">
           <Button asChild variant="outline">
-            <Link href="/upload">Upload New Image</Link>
+            <Link href="/create">Upload New Image</Link>
           </Button>
           <Button asChild>
             <Link href="/jobs">View All Jobs</Link>

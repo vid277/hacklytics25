@@ -43,9 +43,9 @@ export default function Navbar({ user }: NavbarProps) {
               Jobs
             </Link>
             <Link
-              href="/upload"
+              href="/create"
               className={`text-sm font-medium hover:text-foreground/80 ${
-                pathname === "/upload"
+                pathname === "/create"
                   ? "underline transition-all duration-300"
                   : ""
               }`}
