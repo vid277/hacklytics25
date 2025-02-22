@@ -3,7 +3,7 @@ import boto3
 ECR_URI = "864899844109.dkr.ecr.us-east-1.amazonaws.com/hacklytics25/storage"
 
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi import FastAPI, File, HTTPException, UploadFile, Form
+from fastapi import FastAPI, File, HTTPException, UploadFile, Form, Query
 
 import base64
 import shutil
@@ -38,6 +38,7 @@ app.add_middleware(
     allow_headers=["*"],  
 )
 ecr_client = boto3.client('ecr')
+s3 = boto3.client('s3')
 response = ecr_client.get_authorization_token()
 auth_token = response['authorizationData'][0]['authorizationToken']
 decoded_token = base64.b64decode(auth_token).decode('utf-8')    
@@ -152,3 +153,29 @@ def append_logs(job_id: str = Form(...), logs: str = Form(...)):
 def get_logs(job_id: str = Form(...)):
     response = supabase.table("logs").select("logs").eq("job_id", job_id).execute()
     return response.data[0]['logs'] if response.data else ""
+
+
+def fetch_logs(job_id):
+    response = supabase.table("logs").select("logs").eq("job_id", job_id).execute()
+    return response.data[0]['logs'] if response.data else ""
+
+def get_from_s3(job_id):
+    
+    bucket_name = job_id
+    response = s3.list_objects_v2(Bucket=bucket_name)
+    files = response['Contents']
+    return files
+
+@app.get("/retrieve-files-for-job")
+def retrieve_files_for_job(job_id: str = Query(...)):
+    logs = fetch_logs(job_id)
+    files = get_from_s3(job_id)
+    ret_dict = {"logs": logs}
+    file_list = []
+    for file in files:
+        file_obj = s3.get_object(Bucket=job_id, Key=file['Key'])
+        file_content = file_obj['Body'].read()
+        file_list.append({"filename": file['Key'], "content": base64.b64encode(file_content).decode('utf-8')})    
+    ret_dict["files"] = file_list
+    return ret_dict
+    
