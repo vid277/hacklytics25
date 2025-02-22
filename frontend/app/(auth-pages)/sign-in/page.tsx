@@ -27,17 +27,16 @@ export default async function SignIn({ searchParams }: SignInPageProps) {
     return redirect("/dashboard");
   }
 
-  const { message, error: searchError, success } = searchParams;
-
-  const messageObj = {
-    message,
-    error: searchError,
-    success,
+  // Create a new object to avoid direct searchParams access
+  const messageData = {
+    message: String(searchParams.message || ""),
+    error: String(searchParams.error || ""),
+    success: String(searchParams.success || ""),
   };
 
   return (
-    <form className="flex-1 flex flex-col min-w-64 items-center justify-center w-screen h-screen">
-      <div className="flex flex-col gap-2 items-center w-[30rem]">
+    <div className="flex-1 flex flex-col min-w-64 items-center justify-center w-screen h-screen">
+      <form className="flex flex-col gap-2 items-center w-[30rem]">
         <h1 className="text-4xl font-medium font-oddlini">Sign in</h1>
         <p className="text-sm text-foreground font-hanken items-center">
           Don't have an account?{" "}
@@ -77,9 +76,9 @@ export default async function SignIn({ searchParams }: SignInPageProps) {
           >
             Sign in
           </SubmitButton>
-          <FormMessage message={messageObj} />
+          <FormMessage message={messageData} />
         </div>
-      </div>
-    </form>
+      </form>
+    </div>
   );
 }

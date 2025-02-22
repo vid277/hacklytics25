@@ -1,13 +1,21 @@
 "use client";
 
+import { useEffect, useState } from "react";
+
 interface Message {
-  message?: string;
-  error?: string;
-  success?: string;
+  message: string;
+  error: string;
+  success: string;
 }
 
 export function FormMessage({ message }: { message: Message }) {
-  if (!message) return null;
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  if (!mounted) return null;
 
   return (
     <div className="flex flex-col gap-2 w-full max-w-md text-sm">
