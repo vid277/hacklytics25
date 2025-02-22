@@ -24,23 +24,56 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   useEffect(() => {
     let mounted = true;
 
-    supabase.auth.getSession().then(({ data: { session: initialSession } }) => {
-      if (mounted) {
-        if (initialSession) {
-          setSession(initialSession);
-          setUser(initialSession.user);
+    const initAuth = async () => {
+      try {
+        const {
+          data: { user: authUser },
+          error: userError,
+        } = await supabase.auth.getUser();
 
+        if (userError) throw userError;
+        if (authUser) {
+          const {
+            data: { session: currentSession },
+          } = await supabase.auth.getSession();
+          if (mounted) {
+            setUser(authUser);
+            setSession(currentSession);
+          }
+        } else if (mounted) {
+          setUser(null);
+          setSession(null);
         }
-        setLoading(false);
+      } catch (error) {
+        console.error("Auth initialization error:", error);
+        if (mounted) {
+          setUser(null);
+          setSession(null);
+        }
+      } finally {
+        if (mounted) {
+          setLoading(false);
+        }
       }
-    });
+    };
+
+    initAuth();
 
     const {
       data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, currentSession) => {
+    } = supabase.auth.onAuthStateChange(async (event, _session) => {
       if (mounted) {
-        setSession(currentSession);
-        setUser(currentSession?.user ?? null);
+        const {
+          data: { user: authUser },
+        } = await supabase.auth.getUser();
+        if (authUser) {
+          setUser(authUser);
+          setSession(_session);
+        } else {
+          setUser(null);
+          setSession(null);
+        }
+        setLoading(false);
       }
     });
 
@@ -49,12 +82,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       subscription.unsubscribe();
     };
   }, []);
-
-  useEffect(() => {
-    if (!session && !loading) {
-      supabase.auth.refreshSession();
-    }
-  }, [session, loading]);
 
   return (
     <AuthContext.Provider value={{ user, session, loading }}>
