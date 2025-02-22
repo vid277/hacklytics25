@@ -6,6 +6,7 @@ import { Label } from "@/components/ui/label";
 import Link from "next/link";
 import { createClient } from "@/utils/supabase/server";
 import { redirect } from "next/navigation";
+import { StepsProgress } from "@/components/steps-progress";
 
 export default async function SignIn({
   searchParams,
@@ -23,6 +24,8 @@ export default async function SignIn({
 
   return (
     <form className="flex-1 flex flex-col min-w-64 items-center justify-center w-screen h-screen">
+      <StepsProgress />
+
       <div className="flex flex-col gap-2 items-center w-[30rem]">
         <h1 className="text-4xl font-medium font-oddlini">Sign in</h1>
         <p className="text-sm text-foreground font-hanken items-center">

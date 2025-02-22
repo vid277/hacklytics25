@@ -23,7 +23,7 @@ export function StepsProgress() {
   }
 
   return (
-    <div className="absolute top-72 left-0 right-0 z-[100]">
+    <div className="mb-12">
       <div className="flex justify-center items-center gap-4 bg-background/80 backdrop-blur-sm py-2 px-4 rounded-lg mx-auto w-fit">
         {steps.map((step, index) => (
           <div key={step.name} className="flex items-center">

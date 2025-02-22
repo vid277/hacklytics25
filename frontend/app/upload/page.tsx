@@ -3,7 +3,6 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { StepsProgress } from "@/components/steps-progress";
-import { SmtpMessage } from "@/app/(auth-pages)/smtp-message";
 
 export default function UploadPage() {
   const [file, setFile] = useState<File | null>(null);
