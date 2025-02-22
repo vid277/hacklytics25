@@ -177,6 +177,9 @@ def run_docker_container(container_name, docker_dir, timeout_days, job_id):
         if return_code != 0:
             logging.error(f"Error running Docker container: {process.stderr.read()}")
             exit(1)
+        
+        logging.info("Docker container finished successfully.")
+        upload_files(track_files(), job_id)
 
     except subprocess.CalledProcessError as e:
         logging.error(f"Error running Docker container: {e}")
