@@ -45,23 +45,8 @@ username, password = decoded_token.split(":")
 registry = response["authorizationData"][0]["proxyEndpoint"]
 client.login(username=username, password=password, registry=registry)
 
-
-def insert_job(
-    user_id, job_id, compute_type, timeout, output_directory, price, filename
-):
-    supabase.table("jobs").insert(
-        [
-            {
-                "user_id": user_id,
-                "job_id": job_id,
-                "compute_type": compute_type,
-                "timeout": timeout,
-                "output_directory": output_directory,
-                "price": price,
-            }
-        ]
-    ).execute()
-
+def insert_job(user_id, job_id, compute_type, timeout, output_directory, price):
+    supabase.table("jobs").insert([{"user_id": user_id, "job_id": job_id, "compute_type": compute_type, "timeout": timeout, "output_directory": output_directory, "price": price}]).execute()
 
 def fetch_job(job_id):
     response = supabase.table("jobs").select("*").eq("job_id", job_id).execute()
@@ -70,19 +55,18 @@ def fetch_job(job_id):
 
 @app.post("/create-job/")
 async def create_job(
-    user_id: str = Form(...),
-    file: UploadFile = File(...),
-    compute_type="cpu",
-    timeout=1,
-    output_directory="output",
+    user_id: str = Form(...),  
+    file: UploadFile = File(...),  
+    compute_type: str = Form(...), 
+    timeout: int = Form(...), 
+    output_directory: str = Form(...),
+    price: float = Form(...)
 ):
     filename = file.filename
     file_path = os.path.join(UPLOAD_DIR, filename)
 
     with open(file_path, "wb") as buffer:
         shutil.copyfileobj(file.file, buffer)
-    file_size = os.path.getsize(file_path)
-    price = 0.01 * file_size / 1024 / 1024
     job_id = str(uuid.uuid4())
     try:
         with open(file_path, "rb") as image_file:
@@ -94,10 +78,9 @@ async def create_job(
 
     except Exception as e:
         return {"status": "error", "message": str(e)}
-
-    insert_job(
-        user_id, job_id, compute_type, timeout, output_directory, price, filename
-    )
+       
+    
+    insert_job(user_id, job_id, compute_type, timeout, output_directory, price)
 
     return {"status": "success", "message": f"Job id {job_id} created successfully"}
 
