@@ -27,6 +27,7 @@ export default async function SignIn({ searchParams }: SignInPageProps) {
     return redirect("/dashboard");
   }
 
+  // Create a new object to avoid direct searchParams access
   const messageData = {
     message: String(searchParams.message || ""),
     error: String(searchParams.error || ""),

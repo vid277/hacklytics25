@@ -6,12 +6,16 @@ import { Label } from "@/components/ui/label";
 import Link from "next/link";
 import { createClient } from "@/utils/supabase/server";
 import { redirect } from "next/navigation";
+import { ForgotPasswordForm } from "@/components/auth/forgot-password-form";
 
-export default async function ForgotPassword({
-  searchParams,
-}: {
-  searchParams: { message: string; error?: string };
-}) {
+interface PageProps {
+  searchParams: {
+    message?: string;
+    error?: string;
+  };
+}
+
+export default function ForgotPasswordPage({ searchParams }: PageProps) {
   const supabase = await createClient();
   const {
     data: { user },
@@ -22,33 +26,11 @@ export default async function ForgotPassword({
   }
 
   return (
-    <form className="flex-1 flex flex-col min-w-64 items-center justify-center w-screen h-screen">
-      <div className="flex flex-col gap-2 items-center w-[30rem]">
-        <h1 className="text-4xl font-medium font-oddlini">Reset Password</h1>
-        <p className="text-sm text-foreground font-hanken items-center">
-          Remember your password?{" "}
-          <Link
-            className="text-foreground font-medium underline font-hanken"
-            href="/sign-in"
-          >
-            Sign in
-          </Link>
-        </p>
-        <div className="flex flex-col gap-2 [&>input]:mb-3 mt-4 w-full">
-          <Label htmlFor="email" className="font-hanken">
-            Email
-          </Label>
-          <Input name="email" placeholder="you@example.com" required />
-          <SubmitButton
-            formAction={forgotPasswordAction}
-            pendingText="Sending reset email..."
-            className="font-hanken"
-          >
-            Send Reset Email
-          </SubmitButton>
-          <FormMessage message={searchParams} />
-        </div>
-      </div>
-    </form>
+    <div className="flex-1 flex flex-col w-full px-8 sm:max-w-md justify-center gap-2">
+      <ForgotPasswordForm
+        message={searchParams.message}
+        error={searchParams.error}
+      />
+    </div>
   );
 }
