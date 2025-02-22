@@ -66,15 +66,10 @@ async def create_job(user_id: str = Form(...), file: UploadFile = File(...), com
     try:
         with open(file_path, "rb") as image_file:
             image = client.images.load(image_file.read())[0]  # Load and get first image
-        tag = f"{ECR_URI}:{job_id}"
-
+        tag = f"{ECR_URI}:{job_id}"       
         
-        
-        image.tag(tag)
-
-        
+        image.tag(tag)        
         push_logs = client.images.push(tag)
-
 
     except Exception as e:
         return {"status": "error", "message": str(e)}
@@ -91,6 +86,7 @@ class JobResponse(BaseModel):
     compute_type: str
     timeout: int
     output_directory: str
+    price: float
 
 @app.get("/get-job-info/{job_id}", response_model=JobResponse)
 async def get_job_info(job_id: str):
@@ -100,12 +96,16 @@ async def get_job_info(job_id: str):
         raise HTTPException(status_code=404, detail="Job not found")
 
     job_data = response.data[0]
+    if job_data['lender_id']:
+        raise HTTPException(status_code=400, detail="Job already taken by lender")
+    
     return JobResponse(
         user_id=job_data['user_id'],
         job_id=job_data['job_id'],
         compute_type=job_data['compute_type'],
         timeout=job_data['timeout'],
-        output_directory=job_data['output_directory']
+        output_directory=job_data['output_directory'],
+        price = job_data['price']
     )
 
 
@@ -124,5 +124,7 @@ def take_job(job_id: str, lender_id: str):
         return {"status": "success", "message": f"Job id {job_id} taken by lender {lender_id}"}
     except Exception as e:
         return {"status": "error", "message": str(e)}
+
+
     
 
