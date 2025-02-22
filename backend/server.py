@@ -1,13 +1,15 @@
-from fastapi import FastAPI, File, UploadFile, Form
 import docker
+import boto3
+
+from fastapi.middleware.cors import CORSMiddleware
+from fastapi import FastAPI, File, UploadFile, Form
+
+import base64
 import shutil
 import os
-from fastapi.middleware.cors import CORSMiddleware
-
-from supabase import create_client, Client
 import uuid
 
-import boto3
+from supabase import create_client
 
 supabase_url = "https://pristirosscbgmkblozz.supabase.co"
 supabase_key = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InByaXN0aXJvc3NjYmdta2Jsb3p6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDAyMDI2MzQsImV4cCI6MjA1NTc3ODYzNH0.7NWqkC5MUndwTxuLGlyBIEskItFzJ3M8iAKcARc_1yM"
@@ -30,8 +32,8 @@ app.add_middleware(
     allow_headers=["*"],  
 )
 
-def insert_job(user_id, job_id, compute_type, timeout, output_directory):
-    supabase.table("jobs").insert([{"user_id": user_id, "job_id": job_id, "compute_type": compute_type, "timeout": timeout, "output_directory": output_directory}]).execute()
+def insert_job(user_id, job_id, compute_type, timeout, output_directory, price):
+    supabase.table("jobs").insert([{"user_id": user_id, "job_id": job_id, "compute_type": compute_type, "timeout": timeout, "output_directory": output_directory, "price": price}]).execute()
 
 @app.post("/create-job/")
 async def create_job(user_id: str = Form(...), file: UploadFile = File(...), compute_type = 'cpu', timeout = 1, output_directory = 'output'):
@@ -40,36 +42,30 @@ async def create_job(user_id: str = Form(...), file: UploadFile = File(...), com
 
     with open(file_path, "wb") as buffer:
         shutil.copyfileobj(file.file, buffer)
-
+    file_size = os.path.getsize(file_path)
+    price = 0.01 * file_size / 1024 / 1024
     job_id = str(uuid.uuid4())
-   
     try:
         with open(file_path, "rb") as image_file:
             image = client.images.load(image_file.read())[0]  # Load and get first image
-        tag = f"308832414989.dkr.ecr.us-east-1.amazonaws.com/hacklytics/storage:{job_id}:latest"
+        tag = f"308832414989.dkr.ecr.us-east-1.amazonaws.com/hacklytics/storage:{job_id}"
         image.tag(tag)
-        
+
         ecr_client = boto3.client('ecr')
-
-   
         response = ecr_client.get_authorization_token()
-        username, password = (
-            boto3.utils.base64_decode(response['authorizationData'][0]['authorizationToken'])
-            .decode('utf-8')
-            .split(':')
-        )
+        auth_token = response['authorizationData'][0]['authorizationToken']
+        decoded_token = base64.b64decode(auth_token).decode('utf-8')    
+        username, password = decoded_token.split(':')
+
         registry = response['authorizationData'][0]['proxyEndpoint']
-
         client.login(username=username, password=password, registry=registry)
-
         push_logs = client.images.push(tag)
-        print("push logs:\n", push_logs)
 
 
     except Exception as e:
         return {"status": "error", "message": str(e)}
-
+       
     
-    
+    insert_job(user_id, job_id, compute_type, timeout, output_directory, price)
 
-    return {"status": "success", "message": f"Job id {job_id} created successfully"}
+    return {"status": "success", "message": f"{job_id}"}
