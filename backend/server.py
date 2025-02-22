@@ -7,9 +7,8 @@ from fastapi import FastAPI, File, HTTPException, UploadFile, Form
 import base64
 import shutil
 import os
-from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel
-from supabase import create_client, Client
+from supabase import create_client
 import uuid
 
 from supabase import create_client
@@ -37,10 +36,6 @@ app.add_middleware(
 
 def insert_job(user_id, job_id, compute_type, timeout, output_directory, price):
     supabase.table("jobs").insert([{"user_id": user_id, "job_id": job_id, "compute_type": compute_type, "timeout": timeout, "output_directory": output_directory, "price": price}]).execute()
-
-def fetch_job(job_id):
-    response = supabase.table("jobs").select("*").eq("job_id", job_id).execute()
-    return response.data
 
 def fetch_job(job_id):
     response = supabase.table("jobs").select("*").eq("job_id", job_id).execute()
@@ -104,5 +99,3 @@ async def get_job_info(job_id: str):
         timeout=job_data['timeout'],
         output_directory=job_data['output_directory']
     )
-
-print(fetch_job("0949f102-7630-47be-9b2f-1517f5231e53"))
