@@ -7,6 +7,7 @@ import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/contexts/auth-context";
+import { SystemStats } from "@/components/system-stats";
 
 interface Job {
   id: string;
@@ -179,6 +180,7 @@ export function DashboardContent() {
           </div>
         </div>
       </div>
+      <SystemStats />
     </div>
   );
 }

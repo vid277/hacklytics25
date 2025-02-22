@@ -118,7 +118,7 @@ export function JobsContent() {
                     {formatId(job.id)}
                   </h3>
                   <p className="text-sm text-muted-foreground font-hanken">
-                    {job.type_of_compute || "Standard Compute"}
+                    {job.compute_type || "Standard Compute"}
                   </p>
                 </div>
                 <Badge variant={getStatusBadgeVariant(job.status)}>
@@ -147,13 +147,13 @@ export function JobsContent() {
                   </span>
                 </div>
 
-                {job.result_file && (
+                {job.output_directory && (
                   <div className="text-sm">
                     <span className="text-muted-foreground font-hanken">
-                      Result:{" "}
+                      Output:{" "}
                     </span>
                     <Link
-                      href={job.result_file}
+                      href={job.output_directory}
                       className="text-primary hover:underline font-hanken"
                     >
                       View Results
@@ -163,7 +163,11 @@ export function JobsContent() {
               </div>
 
               <div className="mt-4 pt-4 border-t">
-                <Button className="w-full" variant="outline">
+                <Button
+                  className="w-full"
+                  variant="outline"
+                  onClick={() => setSelectedJob(job)}
+                >
                   View Details
                 </Button>
               </div>
@@ -171,6 +175,33 @@ export function JobsContent() {
           ))}
         </div>
       )}
+
+      <Dialog open={!!selectedJob} onOpenChange={() => setSelectedJob(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="font-oddlini">Job Details</DialogTitle>
+          </DialogHeader>
+          {selectedJob && (
+            <div className="space-y-2 font-hanken mt-2">
+              <div className="flex items-center gap-2">
+                <Server className="h-4 w-4" />
+                <span className="font-medium">Compute Type:</span>
+                <span>{selectedJob.compute_type || "Standard"}</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <Clock className="h-4 w-4" />
+                <span className="font-medium">Timeout:</span>
+                <span>{selectedJob.timeout || "N/A"} seconds</span>
+              </div>
+              <div className="flex items-center gap-2">
+                <HardDrive className="h-4 w-4" />
+                <span className="font-medium">Container:</span>
+                <span>{selectedJob.container_name || "N/A"}</span>
+              </div>
+            </div>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
