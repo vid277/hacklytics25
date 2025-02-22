@@ -11,6 +11,9 @@ import { useState, useEffect } from "react";
 import { Label } from "@/components/ui/label";
 import { Input } from "@/components/ui/input";
 import { Card } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { useAuth } from "@/contexts/auth-context";
+import { useToast } from "@/components/hooks/use-toast";
 
 const PRICE_PER_HOUR = {
   cpu: 0.1,
@@ -24,10 +27,15 @@ export default function CreatePage() {
   const [computeType, setComputeType] = useState<"cpu" | "gpu">("cpu");
   const [timeout, setTimeout] = useState<number>(8);
   const [outputDirectory, setOutputDirectory] = useState<string>("");
-  const [fileSize, setFileSize] = useState<number>(0); // in bytes
+  const [fileSize, setFileSize] = useState<number>(0);
   const [computePrice, setComputePrice] = useState<number>(0);
   const [storagePrice, setStoragePrice] = useState<number>(0);
   const [totalPrice, setTotalPrice] = useState<number>(0);
+
+  const { user } = useAuth();
+  const { toast } = useToast();
+  const [uploadedFile, setUploadedFile] = useState<File | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   useEffect(() => {
     const compute = PRICE_PER_HOUR[computeType] * (timeout || 0);
@@ -39,12 +47,73 @@ export default function CreatePage() {
     setTotalPrice(compute + storage + BASE_PROCESSING_FEE);
   }, [computeType, timeout, fileSize]);
 
+  const isFormComplete = () => {
+    return (
+      uploadedFile &&
+      computeType &&
+      timeout > 0 &&
+      outputDirectory.trim() !== "" &&
+      user
+    );
+  };
+
+  const handleSubmit = async () => {
+    if (!isFormComplete()) return;
+
+    setIsSubmitting(true);
+    try {
+      const formData = new FormData();
+      formData.append("user_id", user!.id);
+      formData.append("file", uploadedFile!);
+      formData.append("compute_type", computeType);
+      formData.append("timeout", timeout.toString());
+      formData.append("output_directory", outputDirectory);
+      formData.append("price", totalPrice.toString());
+
+      const response = await fetch("http://localhost:8000/create-job/", {
+        method: "POST",
+        body: formData,
+      });
+
+      const data = await response.json();
+
+      if (data.status === "success") {
+        toast({
+          title: "Success",
+          description: (
+            <div className="flex flex-col gap-1">
+              <p>Job created successfully!</p>
+              <p className="text-sm font-mono bg-secondary p-1 rounded">
+                Job ID: {data.message.split("Job id ")[1].split(" ")[0]}
+              </p>
+            </div>
+          ),
+        });
+      } else {
+        throw new Error(data.message);
+      }
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to create job. Please try again.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleFileUpload = (size: number, file: File) => {
+    setFileSize(size);
+    setUploadedFile(file);
+  };
+
   return (
     <div className="flex flex-col gap-6 p-6 h-[calc(100vh-8rem)]">
       <div className="flex gap-20 items-start justify-center mt-20">
         <div className="flex flex-col gap-4">
           <div className="w-[30rem]">
-            <UploadPage onFileSizeChange={setFileSize} />
+            <UploadPage onFileSizeChange={handleFileUpload} />
           </div>
           <div className="flex justify-center">
             <Card className="p-6 w-[28rem]">
@@ -181,12 +250,21 @@ export default function CreatePage() {
 
             <div className="h-px bg-border" />
 
-            {/* Total */}
             <div className="flex justify-between text-lg font-semibold">
               <span>Total Cost:</span>
               <span className="text-primary">${totalPrice.toFixed(2)}</span>
             </div>
           </Card>
+
+          <div className="mt-6">
+            <Button
+              className="w-full"
+              disabled={!isFormComplete() || isSubmitting}
+              onClick={handleSubmit}
+            >
+              {isSubmitting ? "Creating Job..." : "Create Job"}
+            </Button>
+          </div>
         </div>
       </div>
     </div>
