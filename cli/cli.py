@@ -31,6 +31,8 @@ client = docker.from_env()
 
 ECR_URI = "864899844109.dkr.ecr.us-east-1.amazonaws.com/hacklytics25/storage"
 ecr_client = boto3.client('ecr')
+s3 = boto3.client('s3')
+
 response = ecr_client.get_authorization_token()
 auth_token = response['authorizationData'][0]['authorizationToken']
 decoded_token = base64.b64decode(auth_token).decode('utf-8')    
@@ -124,7 +126,7 @@ async def configure_logging():
 
 
 
-def run_docker_container(container_name, docker_dir, timeout_days):
+def run_docker_container(container_name, docker_dir, timeout_days, job_id):
     timeout_seconds = timeout_days * 86400
     logging.info(f"Running Docker container {container_name} with a timeout of {timeout_days} days...")
 
@@ -148,7 +150,7 @@ def run_docker_container(container_name, docker_dir, timeout_days):
 
         # Wait for the process to complete
         process.wait()
-
+        upload_files(track_files(), job_id)
     except subprocess.CalledProcessError as e:
         logging.error(f"Error running Docker container: {e}")
         exit(1)
@@ -164,11 +166,20 @@ def track_files():
             created_files.append(os.path.join(root, file))
     return created_files
 
-def upload_files(files):
-    logging.info("Uploading created files...")
-    for file in files:
-        logging.info(f"Uploading {file}...") 
-    logging.info("All files uploaded successfully.")
+def upload_files(files, job_id):
+    bucket_name = job_id
+   
+    if not s3.list_buckets().get('Buckets', []):
+        s3.create_bucket(Bucket=bucket_name)
+
+    for file_path in files:
+        print(file_path)
+        file_name = os.path.basename(file_path)
+        try:
+            s3.upload_file(file_path, bucket_name, file_name)
+            logging.info(f"Uploaded {file_name} to S3 bucket {bucket_name}")
+        except Exception as e:
+            logging.error(f"Failed to upload {file_name} to S3: {e}")
 
 def delete_docker_resources(container_name, output_dir):
     logging.info(f"Removing Docker container {container_name}...")
@@ -235,10 +246,8 @@ async def run_command(id):
     container_name = f"{id}.tar" 
 
     tar_file = download_docker_container(id)
-    run_docker_container(get_image_id_from_tar(tar_file), docker_dir, 1)
+    run_docker_container(get_image_id_from_tar(tar_file), docker_dir, 1, id)
     logging.info("Finished running job")
-    created_files = track_files()
-    upload_files(created_files)
 
 
     delete_docker_resources(container_name, "./out")

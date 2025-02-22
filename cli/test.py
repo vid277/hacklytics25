@@ -7,7 +7,7 @@ import json
 client = docker.from_env()
 ECR_URI = "864899844109.dkr.ecr.us-east-1.amazonaws.com/hacklytics25/storage"
 
-# Authenticate with AWS ECR
+
 ecr_client = boto3.client('ecr')
 response = ecr_client.get_authorization_token()
 auth_token = response['authorizationData'][0]['authorizationToken']
