@@ -8,7 +8,6 @@ export default function AuthLayout({
   return (
     <div className="relative min-h-screen">
       <div className="absolute inset-0">
-        <StepsProgress />
         {children}
       </div>
     </div>
