@@ -8,6 +8,7 @@ import os
 import subprocess
 import shutil
 import sys
+import time
 import docker
 import httpx
 from supabase import create_client, Client
@@ -88,8 +89,10 @@ def download_docker_container(job_id):
 
     return tar_file_path
 
-API_ROUTE = "https://your-api.com/logs"  # Replace with your API endpoint
+API_ROUTE = "http://127.0.0.1:8000"  # Replace with your API endpoint
 
+
+# Custom logging handler to send logs to an API
 class ApiLogHandler(logging.Handler):
     def __init__(self, client):
         super().__init__()
@@ -100,27 +103,31 @@ class ApiLogHandler(logging.Handler):
             log_message = self.format(record)
             await self.send_log_to_api(log_message)
         except Exception as e:
-            print(f"Failed to send log: {e}")
+            logging.error(f"Failed to send log: {e}")
 
     async def send_log_to_api(self, log_message):
         try:
-            async with self.client.post(API_ROUTE, json={"log": log_message}) as response:
+            async with self.client.post(API_ROUTE+"/append-logs/", json={"log": log_message}) as response:
                 if response.status_code != 200:
-                    print(f"Failed to send log: {response.status_code}")
+                    logging.error(f"Failed to send log: {response.status_code}")
         except Exception as e:
-            print(f"Error sending log: {e}")
+            logging.error(f"Error sending log: {e}")
 
+# Configure logging to log to both console and the API
 async def configure_logging():
     client = httpx.AsyncClient()
     api_handler = ApiLogHandler(client)
+
+    # Set up logging configuration
     logging.basicConfig(
         level=logging.INFO,
-        format="%(asctime)s - %(levelname)s - %(message)s",
+        format="%(asctime)s - %(levelname)s - %(message)s",  # Log format
         handlers=[
-            logging.StreamHandler(sys.stdout),  # Print logs to console
+            logging.StreamHandler(sys.stdout),  # Logs to console
             api_handler  # Send logs to API
         ]
     )
+ 
 
 
 
@@ -139,21 +146,43 @@ def run_docker_container(container_name, docker_dir, timeout_days):
             text=True
         )
 
-        # Real-time logging of the Docker output (stdout and stderr)
-        for line in process.stdout:
-            logging.info(line.strip())  # Log stdout line by line
+        start_time = time.time()
 
-        for line in process.stderr:
-            logging.error(line.strip())  # Log stderr line by line
+        while True:
+            return_code = process.poll()
 
-        # Wait for the process to complete
-        process.wait()
+            if return_code is not None:
+                break
+
+            elapsed_time = time.time() - start_time
+            if elapsed_time > timeout_seconds:
+                process.kill()  # Kill the process if it times out
+                logging.error(f"Error: Docker container timed out after {timeout_days} days.")
+                return
+
+            if process.stdout:
+                stdout_line = process.stdout.readline()
+                if stdout_line:
+                    logging.info("Docker Out: " + stdout_line.strip())
+            
+            if process.stderr:
+                stderr_line = process.stderr.readline()
+                if stderr_line:
+                    logging.error("Docker Err: " + stderr_line.strip())
+
+            time.sleep(0.1)
+
+        # Process finished, check the return code
+        if return_code != 0:
+            logging.error(f"Error running Docker container: {process.stderr.read()}")
+            exit(1)
 
     except subprocess.CalledProcessError as e:
         logging.error(f"Error running Docker container: {e}")
         exit(1)
-    except subprocess.TimeoutExpired:
-        logging.error(f"Error: Docker container timed out after {timeout_days} days.")
+
+    except Exception as e:
+        logging.error(f"Unexpected error: {e}")
         exit(1)
 
 def track_files():
@@ -182,7 +211,7 @@ def delete_docker_resources(container_name, output_dir):
         shutil.rmtree(output_dir)
 
 async def fetch_container_info(id):
-    url = f"http://your-fastapi-url/get-job-info/{id}"
+    url = f"{API_ROUTE}/get-job-info/{id}"
     async with httpx.AsyncClient() as client:
         response = await client.get(url)
     
@@ -206,7 +235,7 @@ def get_image_id_from_tar(tar_file_path):
             raise ValueError("manifest.json not found in tar file")
     
 async def grab_task(id):
-    url = f"http://your-fastapi-url/take-job?job_id={id}&lender_id={UUID}"
+    url = f"{API_ROUTE}/take-job?job_id={id}&lender_id={UUID}"
 
     async with httpx.AsyncClient() as client:
         response = await client.post(url)
@@ -230,7 +259,7 @@ async def run_command(id):
     # compute_type =  data["compute_type"]
     # timeout = data["timeout"]
     # docker_dir = data["output_directory"]
-
+    
     docker_dir = '/app/'
     container_name = f"{id}.tar" 
 
@@ -273,6 +302,8 @@ async def autorun_command():
     
 
 def main():
+    asyncio.run(configure_logging())
+
     parser = argparse.ArgumentParser(description="Custom CLI with authentication")
     subparsers = parser.add_subparsers(dest="command", required=True)
     
