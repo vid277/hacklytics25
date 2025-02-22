@@ -28,24 +28,35 @@ interface Job {
   status?: string;
 }
 
+const getStatusBadgeVariant = (status: string | undefined) => {
+  switch (status) {
+    case "completed":
+      return "secondary" as const;
+    default:
+      return "default" as const;
+  }
+};
+
 export function JobsContent() {
+  const [mounted, setMounted] = useState(false);
   const [jobs, setJobs] = useState<Job[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [selectedJob, setSelectedJob] = useState<Job | null>(null);
 
   useEffect(() => {
+    setMounted(true);
     const fetchJobs = async () => {
       try {
         const { data, error } = await supabase
-          .from('jobs')
-          .select('*')
-          .order('created_at', { ascending: false });
+          .from("jobs")
+          .select("*")
+          .order("created_at", { ascending: false });
 
         if (error) throw error;
         setJobs(data || []);
       } catch (err) {
-        setError(err instanceof Error ? err.message : 'Failed to fetch jobs');
+        setError(err instanceof Error ? err.message : "Failed to fetch jobs");
       } finally {
         setIsLoading(false);
       }
@@ -54,28 +65,9 @@ export function JobsContent() {
     fetchJobs();
   }, []);
 
-  const handleSelectJob = async (job: Job) => {
-    try {
-      const { error } = await supabase
-        .from('jobs')
-        .update({ lender_id: 'YOUR_USER_ID' }) // Replace with actual user ID
-        .eq('id', job.id)
-        .select();
+  if (!mounted) return null;
 
-      if (error) throw error;
-      // Refresh jobs list
-      const { data: updatedJobs } = await supabase
-        .from('jobs')
-        .select('*')
-        .order('created_at', { ascending: false });
-      
-      setJobs(updatedJobs || []);
-    } catch (err) {
-      console.error('Error selecting job:', err);
-    }
-  };
-
-  const formatId = (id: number) => `#${id.toString().padStart(4, '0')}`;
+  const formatId = (id: number) => `#${id.toString().padStart(4, "0")}`;
 
   if (isLoading) {
     return (
@@ -97,10 +89,12 @@ export function JobsContent() {
   }
 
   return (
-    <div className="container mx-auto p-6 max-w-7xl">
-      <div className="flex justify-between items-center mb-8">
+    <div className="flex-1 flex flex-col gap-6 p-4 md:p-8">
+      <div className="flex justify-between items-center mb-4">
         <div>
-          <h1 className="text-4xl font-medium font-oddlini mb-2">Available Jobs</h1>
+          <h1 className="text-4xl font-medium font-oddlini mb-2">
+            Available Jobs
+          </h1>
           <p className="text-muted-foreground font-hanken">
             Browse and manage compute jobs
           </p>
@@ -120,94 +114,63 @@ export function JobsContent() {
             <Card key={job.id} className="p-6">
               <div className="flex justify-between items-start mb-4">
                 <div className="space-y-1">
-                  <h3 className="font-medium font-hanken">#{job.id.toString().padStart(4, '0')}</h3>
+                  <h3 className="font-medium font-hanken">
+                    {formatId(job.id)}
+                  </h3>
                   <p className="text-sm text-muted-foreground font-hanken">
-                    {job.compute_type || 'Standard Compute'}
+                    {job.type_of_compute || "Standard Compute"}
                   </p>
                 </div>
-                <Badge variant={job.status === 'completed' ? 'success' : 'default'}>
-                  {job.status || 'Pending'}
+                <Badge variant={getStatusBadgeVariant(job.status)}>
+                  {job.status || "Pending"}
                 </Badge>
               </div>
-              
-              <div className="space-y-3">
-                <div className="flex items-center gap-2 text-sm">
-                  <Clock className="h-4 w-4 text-muted-foreground" />
-                  <span className="text-muted-foreground font-hanken">Timeout: </span>
+
+              <div className="space-y-2">
+                <div className="text-sm">
+                  <span className="text-muted-foreground font-hanken">
+                    Price:{" "}
+                  </span>
                   <span className="font-medium font-hanken">
-                    {job.timeout ? `${job.timeout}s` : 'N/A'}
-                  </span>
-                </div>
-
-                <div className="flex items-center gap-2 text-sm">
-                  <Server className="h-4 w-4 text-muted-foreground" />
-                  <span className="text-muted-foreground font-hanken">Container: </span>
-                  <span className="font-medium font-hanken truncate">
-                    {job.container_name || 'N/A'}
-                  </span>
-                </div>
-
-                <div className="flex items-center gap-2 text-sm">
-                  <HardDrive className="h-4 w-4 text-muted-foreground" />
-                  <span className="text-muted-foreground font-hanken">Output: </span>
-                  <span className="font-medium font-hanken truncate">
-                    {job.output_directory || 'N/A'}
+                    {job.price ? `$${job.price.toFixed(2)}` : "N/A"}
                   </span>
                 </div>
 
                 <div className="text-sm">
-                  <span className="text-muted-foreground font-hanken">Price: </span>
+                  <span className="text-muted-foreground font-hanken">
+                    Created:{" "}
+                  </span>
                   <span className="font-medium font-hanken">
-                    {job.price ? `$${job.price.toFixed(2)}` : 'N/A'}
+                    {job.created_at
+                      ? new Date(job.created_at).toLocaleDateString()
+                      : "N/A"}
                   </span>
                 </div>
+
+                {job.result_file && (
+                  <div className="text-sm">
+                    <span className="text-muted-foreground font-hanken">
+                      Result:{" "}
+                    </span>
+                    <Link
+                      href={job.result_file}
+                      className="text-primary hover:underline font-hanken"
+                    >
+                      View Results
+                    </Link>
+                  </div>
+                )}
               </div>
 
-              <div className="mt-4 pt-4 border-t flex gap-2">
-                <Button 
-                  className="flex-1" 
-                  variant="outline"
-                  onClick={() => setSelectedJob(job)}
-                >
+              <div className="mt-4 pt-4 border-t">
+                <Button className="w-full" variant="outline">
                   View Details
                 </Button>
-                {!job.lender_id && (
-                  <Button 
-                    className="flex-1" 
-                    onClick={() => handleSelectJob(job)}
-                  >
-                    Select Job
-                  </Button>
-                )}
               </div>
             </Card>
           ))}
         </div>
       )}
-
-      <Dialog open={!!selectedJob} onOpenChange={() => setSelectedJob(null)}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle className="font-oddlini">
-              Job Details #{selectedJob?.id.toString().padStart(4, '0')}
-            </DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div className="grid grid-cols-2 gap-4">
-              {selectedJob && Object.entries(selectedJob).map(([key, value]) => (
-                <div key={key} className="space-y-1">
-                  <p className="text-sm font-medium font-hanken capitalize">
-                    {key.replace(/_/g, ' ')}
-                  </p>
-                  <p className="text-sm text-muted-foreground font-hanken">
-                    {value?.toString() || 'N/A'}
-                  </p>
-                </div>
-              ))}
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
     </div>
   );
 }

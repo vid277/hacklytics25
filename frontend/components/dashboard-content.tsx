@@ -14,6 +14,7 @@ interface Job {
   docker_address?: string;
   status?: string;
   created_at?: string;
+  price?: number;
 }
 
 const getStatusBadgeVariant = (status: string | undefined) => {
@@ -29,6 +30,8 @@ export function DashboardContent() {
   const { user } = useAuth();
   const [uploadedJobs, setUploadedJobs] = useState<Job[]>([]);
   const [lendingJobs, setLendingJobs] = useState<Job[]>([]);
+  const [moneySpent, setMoneySpent] = useState(0);
+  const [moneyReceived, setMoneyReceived] = useState(0);
   const router = useRouter();
 
   useEffect(() => {
@@ -49,8 +52,19 @@ export function DashboardContent() {
         .order("created_at", { ascending: false })
         .limit(5);
 
+      const spent = (uploaded || []).reduce(
+        (total, job) => total + (job.price || 0),
+        0,
+      );
+      const received = (lending || []).reduce(
+        (total, job) => total + (job.price || 0),
+        0,
+      );
+
       setUploadedJobs(uploaded || []);
       setLendingJobs(lending || []);
+      setMoneySpent(spent);
+      setMoneyReceived(received);
     };
 
     fetchJobs();
@@ -69,16 +83,18 @@ export function DashboardContent() {
           </Button>
         </div>
       </div>
-
       <div className="grid md:grid-cols-2 gap-6">
-        <div className="bg-white rounded-lg shadow p-6">
+        <div className="bg-white border rounded-lg shadow-sm p-6">
           <h2 className="text-2xl font-medium font-oddlini mb-4">
             Your Uploads
           </h2>
           {uploadedJobs.length > 0 ? (
             <div className="space-y-4">
               {uploadedJobs.map((job) => (
-                <div key={job.id} className="border rounded-lg p-4">
+                <div
+                  key={job.id}
+                  className="border rounded-lg p-4 hover:bg-gray-50 transition-colors"
+                >
                   <div className="flex justify-between items-start">
                     <div>
                       <p className="font-hanken text-sm">ID: {job.id}</p>
@@ -101,14 +117,17 @@ export function DashboardContent() {
           )}
         </div>
 
-        <div className="bg-white rounded-lg shadow p-6">
+        <div className="bg-white border rounded-lg shadow-sm p-6">
           <h2 className="text-2xl font-medium font-oddlini mb-4">
             Your Lending
           </h2>
           {lendingJobs.length > 0 ? (
             <div className="space-y-4">
               {lendingJobs.map((job) => (
-                <div key={job.id} className="border rounded-lg p-4">
+                <div
+                  key={job.id}
+                  className="border rounded-lg p-4 hover:bg-gray-50 transition-colors"
+                >
                   <div className="flex justify-between items-start">
                     <div>
                       <p className="font-hanken text-sm">ID: {job.id}</p>
@@ -131,6 +150,33 @@ export function DashboardContent() {
               No lending activity yet
             </p>
           )}
+        </div>
+        <div className="bg-white border rounded-lg shadow-sm p-6">
+          <h2 className="text-2xl font-medium font-oddlini mb-4">
+            Money Spent
+          </h2>
+          <div className="flex items-baseline">
+            <span className="text-3xl font-bold font-hanken text-primary">
+              ${moneySpent.toFixed(2)}
+            </span>
+            <span className="ml-2 text-sm text-muted-foreground font-hanken">
+              total spent on compute
+            </span>
+          </div>
+        </div>
+
+        <div className="bg-white border rounded-lg shadow-sm p-6">
+          <h2 className="text-2xl font-medium font-oddlini mb-4">
+            Money Received
+          </h2>
+          <div className="flex items-baseline">
+            <span className="text-3xl font-bold font-hanken text-green-600">
+              ${moneyReceived.toFixed(2)}
+            </span>
+            <span className="ml-2 text-sm text-muted-foreground font-hanken">
+              total earned from lending
+            </span>
+          </div>
         </div>
       </div>
     </div>
