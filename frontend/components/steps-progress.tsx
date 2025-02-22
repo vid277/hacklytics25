@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation";
 const steps = [
   { name: "Sign Up", path: "/sign-up" },
   { name: "Sign In", path: "/sign-in" },
-  { name: "Upload", path: "/upload" },
+  { name: "Upload", path: "/create" },
 ];
 
 export function StepsProgress() {
@@ -15,7 +15,7 @@ export function StepsProgress() {
 
   if (pathname === "/sign-in") {
     currentStepIndex = 1;
-  } else if (pathname === "/upload") {
+  } else if (pathname === "/create") {
     currentStepIndex = 2;
   }
   if (currentStepIndex === -1) {

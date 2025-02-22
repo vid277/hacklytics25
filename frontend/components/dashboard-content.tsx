@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/contexts/auth-context";
 import { SystemStats } from "@/components/system-stats";
 import { EditSchedule } from "@/components/edit-schedule";
+import { Loader2 } from "lucide-react";
 
 interface Job {
   id: number;
@@ -39,6 +40,7 @@ export function DashboardContent() {
   const [moneySpent, setMoneySpent] = useState(0);
   const [moneyReceived, setMoneyReceived] = useState(0);
   const router = useRouter();
+  const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     if (!user) return;
@@ -85,6 +87,8 @@ export function DashboardContent() {
         setMoneyReceived(received);
       } catch (error) {
         console.error("Error fetching jobs:", error);
+      } finally {
+        setIsLoading(false);
       }
     };
 
@@ -97,7 +101,7 @@ export function DashboardContent() {
         <h1 className="text-4xl font-medium font-oddlini">Dashboard</h1>
         <div className="flex gap-4">
           <Button asChild variant="outline">
-            <Link href="/upload">Upload New Image</Link>
+            <Link href="/create">Upload New Image</Link>
           </Button>
           <Button asChild>
             <Link href="/jobs">View All Jobs</Link>
@@ -109,7 +113,11 @@ export function DashboardContent() {
           <h2 className="text-2xl font-medium font-oddlini mb-4">
             Your Uploads
           </h2>
-          {uploadedJobs.length > 0 ? (
+          {isLoading ? (
+            <div className="flex justify-center items-center min-h-[200px]">
+              <Loader2 className="h-8 w-8 animate-spin text-gray-500" />
+            </div>
+          ) : uploadedJobs.length > 0 ? (
             <div className="space-y-4">
               {uploadedJobs.map((job) => (
                 <div
