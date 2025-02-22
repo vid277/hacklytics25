@@ -201,7 +201,7 @@ def upload_files(files, job_id):
         s3.create_bucket(Bucket=bucket_name)
 
     for file_path in files:
-        print(file_path)
+        logging.info(f"Uploading {file_path} to S3 bucket {bucket_name}...")
         file_name = os.path.basename(file_path)
         try:
             s3.upload_file(file_path, bucket_name, file_name)
