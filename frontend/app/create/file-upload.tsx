@@ -6,21 +6,29 @@ import { useDropzone } from "react-dropzone";
 import { UploadCloud, FileIcon, XCircle } from "lucide-react";
 import { cn } from "@/lib/utils";
 
-export default function UploadPage() {
+interface UploadPageProps {
+  onFileSizeChange: (size: number) => void;
+}
+
+export default function UploadPage({ onFileSizeChange }: UploadPageProps) {
   const [file, setFile] = useState<File | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isUploading, setIsUploading] = useState(false);
 
-  const onDrop = useCallback((acceptedFiles: File[]) => {
-    const selectedFile = acceptedFiles[0];
-    if (selectedFile && selectedFile.name.endsWith(".tar")) {
-      setFile(selectedFile);
-      setError(null);
-    } else {
-      setFile(null);
-      setError("Please select a valid .tar file");
-    }
-  }, []);
+  const onDrop = useCallback(
+    (acceptedFiles: File[]) => {
+      const selectedFile = acceptedFiles[0];
+      if (selectedFile && selectedFile.name.endsWith(".tar")) {
+        setFile(selectedFile);
+        setError(null);
+        onFileSizeChange(selectedFile.size);
+      } else {
+        setFile(null);
+        setError("Please select a valid .tar file");
+      }
+    },
+    [onFileSizeChange],
+  );
 
   const { getRootProps, getInputProps, isDragActive } = useDropzone({
     onDrop,
@@ -29,24 +37,6 @@ export default function UploadPage() {
     },
     maxFiles: 1,
   });
-
-  const handleUpload = async () => {
-    if (!file) {
-      setError("Please select a file first");
-      return;
-    }
-
-    setIsUploading(true);
-    try {
-      console.log("File selected:", file.name);
-      // TODO: Add AWS ECR upload logic here
-    } catch (err) {
-      setError("Error uploading file");
-      console.error(err);
-    } finally {
-      setIsUploading(false);
-    }
-  };
 
   const clearFile = () => {
     setFile(null);
@@ -58,7 +48,7 @@ export default function UploadPage() {
       <div className="w-full max-w-2xl mx-auto">
         <div className="text-center mb-4">
           <h1 className="text-4xl font-medium font-oddlini mb-3">
-            Upload Docker Image
+            Create a new job
           </h1>
           <p className="text-sm text-muted-foreground font-hanken">
             Upload your Docker image as a .tar file for deployment
@@ -127,21 +117,6 @@ export default function UploadPage() {
               {error}
             </div>
           )}
-
-          <Button
-            onClick={handleUpload}
-            disabled={!file || isUploading}
-            className="w-full font-hanken h-11"
-          >
-            {isUploading ? (
-              <>
-                <span className="loading loading-spinner loading-sm mr-2"></span>
-                Uploading...
-              </>
-            ) : (
-              "Upload Docker Image"
-            )}
-          </Button>
         </div>
       </div>
     </div>
