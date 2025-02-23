@@ -78,7 +78,7 @@ async def create_job(
 
     except Exception as e:
         return {"status": "error", "message": str(e)}
-       
+    os.remove(file_path)
     
     insert_job(user_id, job_id, compute_type, timeout, output_directory, price)
 
@@ -113,13 +113,6 @@ async def get_job_info(job_id: str = Form(...), lender_id: str = Form(...)):
     )
 
 
-def retrieve_container(job_id, image_name):
-    image_uri = f"{ECR_URI}:{job_id}"
-    client.images.pull(image_uri)
-    tar_file_path = f"{image_name}.tar"
-    with open(tar_file_path, "wb") as f:
-        for chunk in client.images.get(image_uri).save():
-            f.write(chunk)
 
 @app.post("/take-job/")
 def take_job(job_id: str = Form(...), lender_id: str = Form(...)):
