@@ -1,3 +1,4 @@
+import { Metadata } from "next";
 import { signInAction } from "@/app/actions";
 import { FormMessage } from "@/components/form-message";
 import { SubmitButton } from "@/components/submit-button";
@@ -7,16 +8,29 @@ import Link from "next/link";
 import { createClient } from "@/utils/supabase/server";
 import { redirect } from "next/navigation";
 
-interface SignInPageProps {
-  searchParams: {
-    message?: string;
-    error?: string;
-    success?: string;
-  };
-}
+export const metadata: Metadata = {
+  title: "Sign In",
+  description: "Sign in to your account",
+};
 
-export default async function SignIn({ searchParams }: SignInPageProps) {
-  const supabase = await createClient();
+type MessageData = {
+  message: string;
+  error: string;
+  success: string;
+};
+
+type SearchParams = {
+  message?: string;
+  error?: string;
+  success?: string;
+};
+
+export default async function SignInPage({
+  searchParams = {},
+}: {
+  searchParams?: Partial<SearchParams>;
+}) {
+  const supabase = createClient();
 
   const {
     data: { user },
@@ -27,10 +41,10 @@ export default async function SignIn({ searchParams }: SignInPageProps) {
     return redirect("/dashboard");
   }
 
-  const messageData = {
-    message: searchParams?.message || "",
-    error: searchParams?.error || "",
-    success: searchParams?.success || "",
+  const messageData: MessageData = {
+    message: searchParams.message || "",
+    error: searchParams.error || "",
+    success: searchParams.success || "",
   };
 
   return (
