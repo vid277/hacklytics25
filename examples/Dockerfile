@@ -3,11 +3,8 @@ FROM python:3.9.7
 
 WORKDIR /
 
-RUN python -m venv venv
-
-
-RUN . venv/bin/activate && pip install --upgrade pip && pip install -r requirements.txt
-
+COPY environment.yaml ./
+RUN conda env create -f environment.yaml
 
 RUN mkdir -p /outputs
 
