@@ -39,7 +39,7 @@ export default function CreatePage() {
 
   useEffect(() => {
     const compute = PRICE_PER_HOUR[computeType] * (timeout || 0);
-    const storageInGB = fileSize / (1024 * 1024 * 1024); // Convert bytes to GB
+    const storageInGB = fileSize / (1024 * 1024 * 1024);
     const storage = STORAGE_PRICE_PER_GB * storageInGB;
 
     setComputePrice(compute);
@@ -70,7 +70,9 @@ export default function CreatePage() {
       formData.append("output_directory", outputDirectory);
       formData.append("price", totalPrice.toString());
 
-      const response = await fetch("http://localhost:8000/create-job/", {
+      const NEXT_PUBLIC_API_URL = process.env.NEXT_PUBLIC_API_URL;
+
+      const response = await fetch(`${NEXT_PUBLIC_API_URL}/create-job/`, {
         method: "POST",
         body: formData,
       });

@@ -13,7 +13,6 @@ interface UploadPageProps {
 export default function UploadPage({ onFileSizeChange }: UploadPageProps) {
   const [file, setFile] = useState<File | null>(null);
   const [error, setError] = useState<string | null>(null);
-  const [isUploading, setIsUploading] = useState(false);
 
   const onDrop = useCallback(
     (acceptedFiles: File[]) => {
