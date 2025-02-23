@@ -102,7 +102,7 @@ async def get_job_info(job_id: str = Form(...), lender_id: str = Form(...)):
 
     job_data = response[0]
     print(job_data)
-    if job_data['lender_id'] != lender_id :
+    if job_data['lender_id'] != lender_id or job_data['completed']:
         raise HTTPException(status_code=400, detail="Job already taken by lender")
     
     return JobResponse(

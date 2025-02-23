@@ -9,18 +9,21 @@ import subprocess
 import shutil
 import sys
 import time
-import requests
+import requests, warnings
+warnings.filterwarnings("ignore")
 import docker
+
 import httpx
 from supabase import create_client, Client
 import torch
+
 import tarfile
+
 import boto3
+
 import hashlib
-from cryptography.hazmat.primitives.asymmetric import rsa
-from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
-from cryptography.hazmat.primitives import padding
+
 CREDENTIALS_FILE = "login_credentials.txt"
 
 url = "https://pristirosscbgmkblozz.supabase.co"
@@ -373,8 +376,7 @@ async def autorun_command():
 
 
 def main():
-    
-    
+    print('\n'*24) 
     asyncio.run(configure_logging())
 
     parser = argparse.ArgumentParser(description="Custom CLI with authentication")
