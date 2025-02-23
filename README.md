@@ -1,4 +1,4 @@
-# DeQo - Decentralized Queue Orchestrator
+# DeQo - Decentralized Compute Platform
 
 ![DeQo Banner](https://deqo.netlify.app/banner.png)
 
