@@ -215,11 +215,10 @@ def retrieve_files_for_job(job_id: str = Query(...), uuid: str = Query(...)):
     
 
 def get_hour_index():
-    now = datetime.utcnow()  # Use UTC to avoid timezone issues
-    weekday = now.weekday()  # Monday = 0, Sunday = 6
+    now = datetime.utcnow()  
+    weekday = now.weekday()  
     hour = now.hour
-    return (weekday * 24) + hour  # Compute the hour index
-
+    return (weekday * 24) + hour
 @app.get("/is-active/")
 def is_active(user_id: str = Form(...)):
     try:

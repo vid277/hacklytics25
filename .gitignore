@@ -7,3 +7,5 @@
 ./frontend/node_modules
 ./node_modules
 cli/login_credentials.txt
+
+*backend.zip

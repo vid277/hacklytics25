@@ -222,9 +222,18 @@ export function DashboardContent() {
   };
 
   const handleDownload = async (jobId: string) => {
+    if (!user) {
+      toast({
+        title: "Error",
+        description: "You must be logged in to download files",
+        variant: "destructive",
+      });
+      return;
+    }
+
     try {
       const response = await fetch(
-        `http://localhost:8000/retrieve-files-for-job?job_id=${jobId}`,
+        `http://localhost:8000/retrieve-files-for-job?job_id=${jobId}&uuid=${user.id}`,
       );
       const data = await response.json();
 

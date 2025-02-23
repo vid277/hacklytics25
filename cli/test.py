@@ -20,11 +20,9 @@ client.login(username=_user, password=_pass, registry=registry)
 def download_docker_container(job_id):
     image_uri = f"{ECR_URI}:{job_id}"
     
-    # Pull the image
     print(f"Pulling {image_uri}...")
     client.images.pull(image_uri)
 
-    # Save the image as a tar file
     tar_file_path = f"{job_id}.tar"
     with open(tar_file_path, "wb") as f:
         for chunk in client.images.get(image_uri).save():
@@ -39,13 +37,13 @@ def get_image_id_from_tar(tar_file_path):
         manifest = tar.extractfile('manifest.json')
         if manifest:
             manifest_data = json.load(manifest)
-            config_path = manifest_data[0]["Config"]  # e.g., "blobs/sha256/f2023f95286c87efcf..."
-            image_id = config_path.split("/")[-1].split(".")[0]  # Extract only the hash part
+            config_path = manifest_data[0]["Config"]  
+            image_id = config_path.split("/")[-1].split(".")[0]  
             return image_id
         else:
             raise ValueError("manifest.json not found in tar file")
 
-# Example usage
+
 job_id = "205df0dd-359f-4dbb-acf6-6e233ee5a27e"
 tar_file = download_docker_container(job_id)
 image_id = get_image_id_from_tar(tar_file)
