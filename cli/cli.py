@@ -17,14 +17,18 @@ import torch
 import tarfile
 import boto3
 import hashlib
-
-
+from cryptography.hazmat.primitives.asymmetric import rsa
+from cryptography.hazmat.primitives import serialization
+from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
+from cryptography.hazmat.primitives import padding
 CREDENTIALS_FILE = "login_credentials.txt"
 
 url = "https://pristirosscbgmkblozz.supabase.co"
 key = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InByaXN0aXJvc3NjYmdta2Jsb3p6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDAyMDI2MzQsImV4cCI6MjA1NTc3ODYzNH0.7NWqkC5MUndwTxuLGlyBIEskItFzJ3M8iAKcARc_1yM"  # Replace with your Supabase anonymous API key
 
 supabase: Client = create_client(url, key)
+
+
 
 
 client = docker.from_env()
@@ -43,6 +47,7 @@ client.login(username=_user, password=_pass, registry=registry)
 
 UUID = None
 JOB_UUID = None
+consumer_id = ''
 
 def authenticate(username, password):
     try:
@@ -94,6 +99,17 @@ def download_docker_container(job_id):
 API_ROUTE = "http://127.0.0.1:8000" 
 
 
+def encrypt(message):
+    key = hashlib.sha256(consumer_id.encode()).digest() 
+    iv = os.urandom(12)  
+    cipher = Cipher(algorithms.AES(key), modes.GCM(iv))
+    encryptor = cipher.encryptor()
+    
+    encrypted_data = encryptor.update(message.encode()) + encryptor.finalize()
+    tag = encryptor.tag 
+
+    return base64.b64encode(iv + encrypted_data + tag).decode()
+
 class ApiLogHandler(logging.Handler):
     def __init__(self, client):
         super().__init__()
@@ -102,9 +118,9 @@ class ApiLogHandler(logging.Handler):
     def emit(self, record):
         if JOB_UUID is None:
             return
+       
 
-        m = hashlib.sha256()
-        m.update(str.encode(f"{record}"))
+       
         log_data = {"logs": self.format(record)+'\n', 'job_id': JOB_UUID}
         try:
             response = requests.post(API_ROUTE+"/append-logs/", data=log_data) 
@@ -191,6 +207,16 @@ def track_files():
             created_files.append(os.path.join(root, file))
     return created_files
 
+
+def encryptLogs():
+    response = supabase.table("logs").select("*").eq("job_id", JOB_UUID).execute()
+    logs=response.data[0]['logs']
+    encrypted_logs = encrypt(logs)
+    supabase.table("hashes").insert({"job_id": JOB_UUID, "hash": encrypted_logs}).execute()
+
+
+
+
 def upload_files(files, job_id):
     bucket_name = job_id
    
@@ -256,6 +282,8 @@ async def run_command(id):
     if not data:
         logging.info("Job not found or job taken.")
         return None
+    global consumer_id
+    consumer_id = data['user_id']
     
     if not await grab_task(id):
         logging.info("Unable to grab task.")
@@ -271,7 +299,7 @@ async def run_command(id):
     tar_file = download_docker_container(id)
     run_docker_container(get_image_id_from_tar(tar_file), docker_dir, 1, id)
     logging.info("Finished running job")
-
+    encryptLogs()
     supabase.table("jobs").update({"completed": True}).eq("job_id", id).execute()
     delete_docker_resources(f"{id}.tar", "./out")
     JOB_UUID = None
@@ -342,9 +370,10 @@ async def autorun_command():
 
 
 
-    
+
 
 def main():
+    
     
     asyncio.run(configure_logging())
 

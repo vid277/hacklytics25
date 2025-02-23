@@ -1,4 +1,5 @@
 from datetime import datetime
+import hashlib
 import docker
 import boto3
 ECR_URI = "864899844109.dkr.ecr.us-east-1.amazonaws.com/hacklytics25/storage"
@@ -102,7 +103,8 @@ async def get_job_info(job_id: str = Form(...), lender_id: str = Form(...)):
         raise HTTPException(status_code=404, detail="Job not found")
 
     job_data = response[0]
-    if job_data['lender_id'] != lender_id:
+    print(job_data)
+    if job_data['lender_id'] != lender_id :
         raise HTTPException(status_code=400, detail="Job already taken by lender")
     
     return JobResponse(
@@ -185,10 +187,32 @@ def get_from_s3(job_id):
     files = response['Contents']
     return files
 
+from cryptography.hazmat.primitives import serialization
+from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
+from cryptography.hazmat.primitives import padding
+
+def decrypt(uuid_key, encrypted_message):
+    key = hashlib.sha256(uuid_key.encode()).digest() 
+    encrypted_data = base64.b64decode(encrypted_message)
+
+    iv = encrypted_data[:12] 
+    tag = encrypted_data[-16:]  
+    ciphertext = encrypted_data[12:-16]
+
+    cipher = Cipher(algorithms.AES(key), modes.GCM(iv, tag))
+    decryptor = cipher.decryptor()
+    
+    return decryptor.update(ciphertext) + decryptor.finalize()
+
 @app.get("/retrieve-files-for-job")
-def retrieve_files_for_job(job_id: str = Query(...)):
+def retrieve_files_for_job(job_id: str = Query(...), uuid: str = Query(...)):
     logs = fetch_logs(job_id)
     files = get_from_s3(job_id)
+
+
+    if logs != decrypt(uuid, supabase.table("hashes").select("hash").eq("job_id", job_id).execute()).decode():
+        raise HTTPException(status_code=404, detail="Insecure hash. Task maliciously modified.")
+    
     ret_dict = {"logs": logs}
     file_list = []
     for file in files:
