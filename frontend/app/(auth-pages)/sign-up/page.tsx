@@ -31,7 +31,7 @@ export default async function SignUp({
   }
 
   return (
-    <form className="flex-1 flex flex-col min-w-64 items-center justify-center w-screen h-screen">
+    <form className="flex-1 flex flex-col min-w-64 items-center justify-center w-screen h-[calc(100vh-10rem)]">
       <div className="flex flex-col gap-2 items-center w-[30rem]">
         <h1 className="text-4xl font-medium font-oddlini">Sign up</h1>
         <p className="text-sm text-foreground font-hanken items-center">

@@ -34,10 +34,12 @@ export default function Hero() {
             transition={{ duration: 0.5, delay: 0.3 }}
             className="text-7xl font-oddlini text-center leading-[1.25]"
           >
-            The tech news you need, <br /> made{" "}
+            The
             <span className="text-transparent bg-clip-text bg-gradient-to-r from-purple-500 via-violet-500 to-pink-500">
-              simple.
+              {" "}
+              modern{" "}
             </span>
+            marketplace for computing.
           </motion.h1>
 
           <motion.p
@@ -46,9 +48,8 @@ export default function Hero() {
             transition={{ duration: 0.5, delay: 0.4 }}
             className="text-xl font-hanken text-center text-neutral-600 w-3/4"
           >
-            The modern standard for staying up-to-date with everything tech.{" "}
-            <br />
-            Simple, personalized, and uniquely yours.
+            The marketplace for lending and renting computing power at any scale
+            — from a single computer to an entire data center.
           </motion.p>
 
           <motion.div
@@ -61,11 +62,6 @@ export default function Hero() {
               <button className="text-sm font-medium bg-foreground text-background px-4 py-2 pt-2.5 rounded-lg flex items-center justify-center font-oddlini hover:bg-foreground/80">
                 Get Started for Free
                 <ArrowRightIcon className="ml-1 size-3 transition-transform duration-300 ease-in-out group-hover:translate-x-0.5" />
-              </button>
-            </Link>
-            <Link href="/sign-in">
-              <button className="text-sm font-medium border border-foreground text-foreground px-4 py-2 pt-2.5 rounded-lg flex items-center justify-center font-oddlini hover:bg-foreground/5">
-                Sign in
               </button>
             </Link>
           </motion.div>
