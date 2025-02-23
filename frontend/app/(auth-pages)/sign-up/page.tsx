@@ -8,24 +8,36 @@ import { SmtpMessage } from "../smtp-message";
 import { createClient } from "@/utils/supabase/server";
 import { redirect } from "next/navigation";
 
-export default async function SignUp({
-  searchParams,
-}: {
-  searchParams: { message: string; error?: string };
+type Message = {
+  message?: string;
+  error?: string;
+  success?: string;
+};
+
+export default async function SignUpPage(props: {
+  searchParams: Promise<Message>;
 }) {
   const supabase = await createClient();
+  const searchParams = await props.searchParams;
+
   const {
     data: { user },
   } = await supabase.auth.getUser();
 
   if (user) {
-    return redirect("/protected");
+    return redirect("/dashboard");
   }
 
   if (searchParams.message) {
     return (
       <div className="w-full flex-1 flex items-center h-screen sm:max-w-md justify-center gap-2 p-4">
-        <FormMessage message={searchParams} />
+        <FormMessage 
+          message={{
+            message: searchParams.message || "",
+            error: searchParams.error || "",
+            success: "",
+          }} 
+        />
       </div>
     );
   }
@@ -65,7 +77,13 @@ export default async function SignUp({
           >
             Sign up
           </SubmitButton>
-          <FormMessage message={searchParams} />
+          <FormMessage 
+            message={{
+              message: searchParams.message || "",
+              error: searchParams.error || "",
+              success: "",
+            }} 
+          />
         </div>
       </div>
     </form>

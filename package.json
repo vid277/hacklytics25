@@ -15,6 +15,7 @@
   "license": "ISC",
   "dependencies": {
     "@supabase/supabase-js": "^2.48.1",
+    "date-fns": "^4.1.0",
     "react": "^18.3.1",
     "react-dom": "18",
     "react-dropzone": "^14.3.5"

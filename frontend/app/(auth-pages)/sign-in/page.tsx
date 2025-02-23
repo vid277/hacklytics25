@@ -13,24 +13,17 @@ export const metadata: Metadata = {
   description: "Sign in to your account",
 };
 
-type MessageData = {
-  message: string;
-  error: string;
-  success: string;
-};
-
-type SearchParams = {
+type Message = {
   message?: string;
   error?: string;
   success?: string;
 };
 
-export default async function SignInPage({
-  searchParams = {},
-}: {
-  searchParams?: Partial<SearchParams>;
+export default async function SignInPage(props: {
+  searchParams: Promise<Message>;
 }) {
-  const supabase = createClient();
+  const supabase = await createClient();
+  const searchParams = await props.searchParams;
 
   const {
     data: { user },
@@ -40,12 +33,6 @@ export default async function SignInPage({
   if (user && !error) {
     return redirect("/dashboard");
   }
-
-  const messageData: MessageData = {
-    message: searchParams.message || "",
-    error: searchParams.error || "",
-    success: searchParams.success || "",
-  };
 
   return (
     <div className="flex-1 flex flex-col min-w-64 items-center justify-center w-screen h-screen">
@@ -89,7 +76,13 @@ export default async function SignInPage({
           >
             Sign in
           </SubmitButton>
-          <FormMessage message={messageData} />
+          <FormMessage
+            message={{
+              message: searchParams.message || "",
+              error: searchParams.error || "",
+              success: searchParams.success || "",
+            }}
+          />
         </div>
       </form>
     </div>

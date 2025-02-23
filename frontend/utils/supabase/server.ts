@@ -1,34 +1,38 @@
 import { createServerClient, type CookieOptions } from "@supabase/ssr";
 import { cookies } from "next/headers";
 
-export const createClient = () => {
-  const cookieStore = cookies();
+export const createClient = async () => {
+  const cookieStore = await cookies();
 
   return createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
       cookies: {
-        get(name: string) {
-          return cookieStore.get(name)?.value;
+        async get(name: string) {
+          const cookie = await cookieStore.get(name);
+          return cookie?.value;
         },
-        set(name: string, value: string, options: CookieOptions) {
-          try {
-            cookieStore.set({ name, value, ...options });
-          } catch (error) {
-            if (process.env.NODE_ENV !== "production") {
-              console.error("Error setting cookie:", error);
-            }
-          }
+        async set(name: string, value: string, options: CookieOptions) {
+          await cookieStore.set({
+            name,
+            value,
+            ...options,
+            // Make sure the cookie works in all contexts
+            httpOnly: true,
+            sameSite: "lax",
+            secure: process.env.NODE_ENV === "production",
+          });
         },
-        remove(name: string, options: CookieOptions) {
-          try {
-            cookieStore.delete(name);
-          } catch (error) {
-            if (process.env.NODE_ENV !== "production") {
-              console.error("Error removing cookie:", error);
-            }
-          }
+        async remove(name: string, options: CookieOptions) {
+          await cookieStore.delete({
+            name,
+            ...options,
+            // Make sure the cookie is removed in all contexts
+            httpOnly: true,
+            sameSite: "lax",
+            secure: process.env.NODE_ENV === "production",
+          });
         },
       },
     },
@@ -36,7 +40,7 @@ export const createClient = () => {
 };
 
 export async function getSession() {
-  const supabase = createClient();
+  const supabase = await createClient();
   try {
     const {
       data: { session },
