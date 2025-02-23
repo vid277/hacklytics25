@@ -15,30 +15,29 @@ def linear_regression(x, y):
     return w0, w1
 
 def main():
-    # Read data from CSV
+    
     x_values = []
     y_values = []
-    
+    print("Opening data")
     with open('data.csv', 'r') as file:
-        # Skip header row
+       
         next(file)
         for line in file:
-            # Split by comma and convert to float
+          
             values = line.strip().split(',')
             x_values.append(float(values[0]))
             y_values.append(float(values[1]))
     
-    # Perform linear regression
     w0, w1 = linear_regression(x_values, y_values)
     
-    # Create outputs directory if it doesn't exist
+    
     import os
     os.makedirs('outputs', exist_ok=True)
     
-    # Save weights to file
+    
     with open('outputs/model.txt', 'w') as file:
         file.write(f'Intercept (w0): {w0}\n')
         file.write(f'Slope (w1): {w1}\n')
-        
+    print("Finishing process")
 if __name__ == '__main__':
     main()
