@@ -13,8 +13,6 @@ from pydantic import BaseModel
 from supabase import create_client
 import uuid
 
-from supabase import create_client
-
 supabase_url = "https://pristirosscbgmkblozz.supabase.co"
 supabase_key = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InByaXN0aXJvc3NjYmdta2Jsb3p6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDAyMDI2MzQsImV4cCI6MjA1NTc3ODYzNH0.7NWqkC5MUndwTxuLGlyBIEskItFzJ3M8iAKcARc_1yM"
 supabase = create_client(supabase_url, supabase_key)
