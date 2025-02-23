@@ -18,7 +18,7 @@ export default function Navbar({ user }: NavbarProps) {
     <motion.div className="flex h-16 px-10 items-center justify-between border-b sticky top-0 z-[999] bg-white">
       <div className="flex items-center gap-6 font-oddlini justify-center mt-0.5">
         <Link href="/" className="text-2xl font-semibold font-oddlini">
-          Hacklytics 2025
+          Deqo
         </Link>
         {user && (
           <nav className="flex items-center gap-4">
@@ -43,9 +43,9 @@ export default function Navbar({ user }: NavbarProps) {
               Jobs
             </Link>
             <Link
-              href="/upload"
+              href="/create"
               className={`text-sm font-medium hover:text-foreground/80 ${
-                pathname === "/upload"
+                pathname === "/create"
                   ? "underline transition-all duration-300"
                   : ""
               }`}

@@ -44,6 +44,8 @@ const DAYS = [
 export function EditSchedule() {
   const { user, loading: authLoading, session } = useAuth();
   const { toast } = useToast();
+  const [mounted, setMounted] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
   const [schedule, setSchedule] = useState<WeekSchedule>(
     DAYS.reduce(
       (acc, day) => ({
@@ -68,15 +70,15 @@ export function EditSchedule() {
   const [isExpanded, setIsExpanded] = useState(false);
   const VISIBLE_HOURS = 12;
 
-  const [isLoading, setIsLoading] = useState(true);
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   useEffect(() => {
-    const fetchSchedule = async () => {
-      if (!user) {
-        setIsLoading(false);
-        return;
-      }
+    if (!mounted || !user) return;
 
+    const fetchSchedule = async () => {
+      setIsLoading(true);
       try {
         const { data, error } = await supabase
           .from("users")
@@ -114,7 +116,7 @@ export function EditSchedule() {
     };
 
     fetchSchedule();
-  }, [user?.id]);
+  }, [mounted, user]);
 
   const formatHour = (hour: number) => {
     const period = hour >= 12 ? " PM" : " AM";
@@ -272,6 +274,8 @@ export function EditSchedule() {
       });
     }
   };
+
+  if (!mounted) return null;
 
   if (authLoading) {
     return (
