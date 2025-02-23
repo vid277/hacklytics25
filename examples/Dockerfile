@@ -1,21 +1,9 @@
 
-FROM continuumio/miniconda3:latest
+FROM python:3.9.7
+
+RUN python -m venv venv
 
 
-COPY environment.yaml ./
+RUN . venv/bin/activate && pip install --upgrade pip && pip install -r requirements.txt
 
-
-RUN conda env create -f environment.yaml
-
-
-RUN echo "source activate $(head -1 environment.yaml | cut -d' ' -f2)" > ~/.bashrc
-ENV PATH /opt/conda/envs/$(head -1 environment.yaml | cut -d' ' -f2)/bin:$PATH
-
-
-RUN mkdir -p /outputs
-
-
-COPY . .
-
-
-CMD ["python", "main.py"]
+CMD ["/bin/bash", "-c", ". venv/bin/activate && python main.py"]
