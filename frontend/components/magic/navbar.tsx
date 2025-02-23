@@ -18,7 +18,10 @@ export default function Navbar({ user }: NavbarProps) {
     <motion.div className="flex h-16 px-10 items-center justify-between border-b sticky top-0 z-[999] bg-white">
       <div className="flex items-center gap-6 font-oddlini justify-center mt-0.5">
         <Link href="/" className="text-2xl font-semibold font-oddlini">
-          Deqo
+          <span className="text-transparent bg-clip-text bg-gradient-to-r from-purple-500 via-violet-500 to-pink-500">
+            {" "}
+            deqo{" "}
+          </span>
         </Link>
         {user && (
           <nav className="flex items-center gap-4">

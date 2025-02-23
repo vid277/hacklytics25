@@ -23,7 +23,7 @@ export default function Hero() {
             )}
           >
             <AnimatedShinyText className="inline-flex font-hanken items-center justify-center px-4 py-1 transition ease-in-out">
-              <span>✨ Sign up now for a free 14 day trial</span>
+              <span>✨ Sign up now and get started for free</span>
               <ArrowRightIcon className="ml-1 size-3 transition-transform duration-300 ease-in-out group-hover:translate-x-0.5" />
             </AnimatedShinyText>
           </motion.div>
@@ -60,7 +60,7 @@ export default function Hero() {
           >
             <Link href="/sign-up">
               <button className="text-sm font-medium bg-foreground text-background px-4 py-2 pt-2.5 rounded-lg flex items-center justify-center font-oddlini hover:bg-foreground/80">
-                Get Started for Free
+                Get Started
                 <ArrowRightIcon className="ml-1 size-3 transition-transform duration-300 ease-in-out group-hover:translate-x-0.5" />
               </button>
             </Link>
