@@ -9,13 +9,15 @@ import { Badge } from "@/components/ui/badge";
 import { useAuth } from "@/contexts/auth-context";
 import { SystemStats } from "@/components/system-stats";
 import { EditSchedule } from "@/components/edit-schedule";
-import { Loader2 } from "lucide-react";
+import { Loader2, Copy, Download } from "lucide-react";
 import {
   Dialog,
   DialogContent,
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
+import { format } from "date-fns";
+import { useToast } from "@/components/hooks/use-toast";
 
 interface Job {
   id: number;
@@ -41,7 +43,11 @@ interface JobLog {
   created_at: string;
 }
 
-const getStatusBadgeVariant = (status: string | undefined, completed?: boolean, lender_id?: string) => {
+const getStatusBadgeVariant = (
+  status: string | undefined,
+  completed?: boolean,
+  lender_id?: string,
+) => {
   if (completed) {
     return "success" as const;
   }
@@ -63,35 +69,83 @@ export function DashboardContent() {
   const [selectedJob, setSelectedJob] = useState<Job | null>(null);
   const [showAllUploads, setShowAllUploads] = useState(false);
   const [jobLogs, setJobLogs] = useState<Record<string, string>>({});
+  const [isClient, setIsClient] = useState(false);
+  const { toast } = useToast();
+  const formatDate = (dateString?: string) => {
+    if (!dateString) return "N/A";
+    try {
+      return format(new Date(dateString), "MMM d, yyyy");
+    } catch {
+      return "Invalid date";
+    }
+  };
+
+  const formatDateTime = (dateString?: string) => {
+    if (!dateString) return "N/A";
+    try {
+      return format(new Date(dateString), "MMM d, yyyy HH:mm");
+    } catch {
+      return "Invalid date";
+    }
+  };
 
   const fetchJobLogs = async (jobId: string) => {
     try {
       const { data, error } = await supabase
-        .from('logs')
-        .select('*')
-        .eq('job_id', jobId)
-        .order('created_at', { ascending: false })
+        .from("logs")
+        .select("*")
+        .eq("job_id", jobId)
+        .order("created_at", { ascending: false })
         .limit(1);
 
       if (error) throw error;
-      
+
       if (data && data.length > 0) {
-        setJobLogs(prev => ({
+        setJobLogs((prev) => ({
           ...prev,
-          [jobId]: data[0].logs
+          [jobId]: data[0].logs,
         }));
       }
     } catch (error) {
-      console.error('Error fetching logs:', error);
+      console.error("Error fetching logs:", error);
     }
   };
 
+  const copyToClipboard = async (text: string) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      toast({
+        title: "Copied to clipboard",
+        description: "Job logs have been copied to your clipboard",
+      });
+    } catch (err) {
+      toast({
+        title: "Failed to copy",
+        description: "Could not copy logs to clipboard",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const downloadLogs = (jobId: string, logs: string) => {
+    const blob = new Blob([logs], { type: "text/plain" });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = `job-${jobId}-logs.txt`;
+    document.body.appendChild(a);
+    a.click();
+    window.URL.revokeObjectURL(url);
+    document.body.removeChild(a);
+  };
+
   useEffect(() => {
+    setIsClient(true);
     setMounted(true);
   }, []);
 
   useEffect(() => {
-    if (!mounted || !user) return;
+    if (!mounted || !user || typeof window === "undefined") return;
 
     const fetchJobs = async () => {
       setIsLoading(true);
@@ -104,7 +158,7 @@ export function DashboardContent() {
 
         if (uploadError) throw uploadError;
 
-        const sortedJobs = (uploaded || []).sort((a, b) => {
+        const sortedJobs = (uploaded || []).sort((a: Job, b: Job) => {
           if (a.completed && !b.completed) return -1;
           if (!a.completed && b.completed) return 1;
           if (a.lender_id && !b.lender_id) return -1;
@@ -114,7 +168,7 @@ export function DashboardContent() {
 
         setUploadedJobs(sortedJobs);
 
-        sortedJobs.forEach(job => {
+        sortedJobs.forEach((job: Job) => {
           if (job.completed || job.lender_id) {
             fetchJobLogs(job.job_id!);
           }
@@ -155,7 +209,13 @@ export function DashboardContent() {
     fetchJobs();
   }, [mounted, user]);
 
-  if (!mounted) return null;
+  if (!isClient) {
+    return (
+      <div className="flex items-center justify-center min-h-[60vh]">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
 
   const handleJobClick = (job: Job) => {
     setSelectedJob(job);
@@ -163,13 +223,17 @@ export function DashboardContent() {
 
   const handleDownload = async (jobId: string) => {
     try {
-      const response = await fetch(`http://localhost:8000/retrieve-files-for-job?job_id=${jobId}`);
+      const response = await fetch(
+        `http://localhost:8000/retrieve-files-for-job?job_id=${jobId}`,
+      );
       const data = await response.json();
-      
+
       data.files.forEach((file: { filename: string; content: string }) => {
-        const blob = new Blob([atob(file.content)], { type: 'application/octet-stream' });
+        const blob = new Blob([atob(file.content)], {
+          type: "application/octet-stream",
+        });
         const url = window.URL.createObjectURL(blob);
-        const a = document.createElement('a');
+        const a = document.createElement("a");
         a.href = url;
         a.download = file.filename;
         document.body.appendChild(a);
@@ -178,7 +242,7 @@ export function DashboardContent() {
         document.body.removeChild(a);
       });
     } catch (error) {
-      console.error('Error downloading files:', error);
+      console.error("Error downloading files:", error);
     }
   };
 
@@ -193,18 +257,27 @@ export function DashboardContent() {
             <div className="flex flex-col gap-1">
               <p className="font-hanken text-sm">ID: {job.id}</p>
               <p className="font-hanken text-xs text-muted-foreground break-all">
-                <span className="font-bold">Job ID:</span>{" "}
-                {job.job_id || "N/A"}
+                <span className="font-bold">Job ID:</span> {job.job_id || "N/A"}
               </p>
             </div>
             <div className="flex items-center gap-2">
-              <Badge variant={getStatusBadgeVariant(job.status, job.completed, job.lender_id)}>
-                {job.completed ? "Completed" : job.lender_id ? "In Progress" : "Pending"}
+              <Badge
+                variant={getStatusBadgeVariant(
+                  job.status,
+                  job.completed,
+                  job.lender_id,
+                )}
+              >
+                {job.completed
+                  ? "Completed"
+                  : job.lender_id
+                    ? "In Progress"
+                    : "Pending"}
               </Badge>
             </div>
           </div>
           <p className="font-hanken text-sm text-muted-foreground">
-            Created: {new Date(job.created_at || "").toLocaleDateString()}
+            Created: {formatDate(job.created_at)}
           </p>
           <div className="flex justify-between items-center mt-2">
             {(job.completed || job.lender_id) && (
@@ -238,7 +311,7 @@ export function DashboardContent() {
 
   const renderJobDialog = () => (
     <Dialog open={!!selectedJob} onOpenChange={() => setSelectedJob(null)}>
-      <DialogContent className="sm:max-w-[600px] shadow-lg backdrop-blur-[2px] bg-white/95 border-none">
+      <DialogContent className="sm:max-w-[600px] w-[700px] shadow-lg backdrop-blur-[2px] bg-white/95 border-none">
         <DialogHeader className="mb-3">
           <DialogTitle>Job Details</DialogTitle>
         </DialogHeader>
@@ -260,8 +333,18 @@ export function DashboardContent() {
               <div className="grid grid-cols-2 gap-4">
                 <div>
                   <p className="text-sm font-medium">Status</p>
-                  <Badge variant={getStatusBadgeVariant(selectedJob.status, selectedJob.completed, selectedJob.lender_id)}>
-                    {selectedJob.completed ? "Completed" : selectedJob.lender_id ? "In Progress" : "Pending"}
+                  <Badge
+                    variant={getStatusBadgeVariant(
+                      selectedJob.status,
+                      selectedJob.completed,
+                      selectedJob.lender_id,
+                    )}
+                  >
+                    {selectedJob.completed
+                      ? "Completed"
+                      : selectedJob.lender_id
+                        ? "In Progress"
+                        : "Pending"}
                   </Badge>
                 </div>
                 <div>
@@ -280,7 +363,7 @@ export function DashboardContent() {
               <div>
                 <p className="text-sm font-medium">Created At</p>
                 <p className="text-sm text-muted-foreground">
-                  {new Date(selectedJob.created_at || "").toLocaleString()}
+                  {formatDateTime(selectedJob.created_at)}
                 </p>
               </div>
               {selectedJob.progress !== undefined && (
@@ -302,8 +385,37 @@ export function DashboardContent() {
             </div>
             {jobLogs[selectedJob.job_id!] && (
               <div>
-                <p className="text-sm font-medium mb-2">Logs</p>
-                <div className="relative">
+                <div className="flex justify-between items-center mb-2 w-[93%]">
+                  <p className="text-sm font-medium">Logs</p>
+                  <div className="flex gap-2">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() =>
+                        copyToClipboard(jobLogs[selectedJob.job_id!])
+                      }
+                      className="h-8"
+                    >
+                      <Copy className="h-4 w-4 mr-1" />
+                      Copy
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() =>
+                        downloadLogs(
+                          selectedJob.job_id!,
+                          jobLogs[selectedJob.job_id!],
+                        )
+                      }
+                      className="h-8"
+                    >
+                      <Download className="h-4 w-4 mr-1" />
+                      Download
+                    </Button>
+                  </div>
+                </div>
+                <div className="w-[93%]">
                   <pre className="text-sm text-muted-foreground whitespace-pre-wrap bg-slate-950 text-slate-50 p-4 rounded-md font-mono max-h-[300px] overflow-y-auto scrollbar-thin scrollbar-thumb-slate-700 scrollbar-track-slate-800">
                     <code>{jobLogs[selectedJob.job_id!]}</code>
                   </pre>
@@ -342,7 +454,7 @@ export function DashboardContent() {
           ) : uploadedJobs.length > 0 ? (
             <div className="space-y-4">
               {(showAllUploads ? uploadedJobs : uploadedJobs.slice(0, 4)).map(
-                renderJobCard
+                renderJobCard,
               )}
               {uploadedJobs.length > 4 && (
                 <Button
@@ -379,9 +491,12 @@ export function DashboardContent() {
           )}
         </div>
         <div className="bg-white/95 border rounded-lg shadow-sm backdrop-blur-sm p-6 transition-all duration-200">
-          <h2 className="text-2xl font-medium font-oddlini mb-4">
+          <h2 className="text-2xl font-medium font-oddlini mb-1">
             Money Spent
           </h2>
+          <p className="text-muted-foreground font-hanken mb-4">
+            Money will be charged upon the succesful completion of the job
+          </p>
           <div className="flex items-baseline">
             <span className="text-3xl font-bold font-hanken text-primary">
               ${moneySpent.toFixed(2)}
@@ -393,9 +508,12 @@ export function DashboardContent() {
         </div>
 
         <div className="bg-white/95 border rounded-lg shadow-sm backdrop-blur-sm p-6 transition-all duration-200">
-          <h2 className="text-2xl font-medium font-oddlini mb-4">
+          <h2 className="text-2xl font-medium font-oddlini mb-1">
             Money Received
           </h2>
+          <p className="text-muted-foreground font-hanken mb-4">
+            Money will be awarded upon the succesful completion of the job
+          </p>
           <div className="flex items-baseline">
             <span className="text-3xl font-bold font-hanken text-green-600">
               ${moneyReceived.toFixed(2)}
