@@ -48,7 +48,7 @@ export default async function SignInPage({
   };
 
   return (
-    <div className="flex-1 flex flex-col min-w-64 items-center justify-center w-screen h-screen">
+    <div className="flex-1 flex flex-col min-w-64 items-center justify-center w-screen h-[calc(100vh-10rem)]">
       <form className="flex flex-col gap-2 items-center w-[30rem]">
         <h1 className="text-4xl font-medium font-oddlini">Sign in</h1>
         <p className="text-sm text-foreground font-hanken items-center">
