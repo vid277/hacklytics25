@@ -1,9 +1,22 @@
+# Use an official PyTorch image as the base image
+FROM pytorch/pytorch:latest
 
-FROM python:3.9.7
+# Set the working directory in the container
+WORKDIR /app
 
-RUN python -m venv venv
+# Install any necessary system dependencies
+RUN apt-get update && apt-get install -y \
+    python3-pip \
+    python3-dev \
+    git \
+    && rm -rf /var/lib/apt/lists/*
 
+# Install Python dependencies
+COPY requirements.txt .
+RUN pip3 install --no-cache-dir -r requirements.txt
 
-RUN . venv/bin/activate && pip install --upgrade pip && pip install -r requirements.txt
+# Copy the application code to the container
+COPY . .
 
-CMD ["/bin/bash", "-c", ". venv/bin/activate && python main.py"]
+# Set the entry point to run your script
+CMD ["python3", "main.py"]
