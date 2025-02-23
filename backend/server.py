@@ -96,13 +96,13 @@ class JobResponse(BaseModel):
     price: float
 
 @app.get("/get-job-info/", response_model=JobResponse)
-async def get_job_info(job_id: str = Form(...)):
+async def get_job_info(job_id: str = Form(...), lender_id: str = Form(...)):
     response = fetch_job(job_id)
     if not response:
         raise HTTPException(status_code=404, detail="Job not found")
 
     job_data = response[0]
-    if job_data['lender_id']:
+    if job_data['lender_id'] != lender_id:
         raise HTTPException(status_code=400, detail="Job already taken by lender")
     
     return JobResponse(
@@ -155,11 +155,11 @@ def append_logs(job_id: str = Form(...), logs: str = Form(...)):
     try:
         response = supabase.table("logs").select("logs").eq("job_id", job_id).execute()
         
-        if response.data:  # Record exists, update it
+        if response.data: 
             current_logs = response.data[0]['logs']
             updated_logs = current_logs + logs
             supabase.table("logs").update({"logs": updated_logs}).eq("job_id", job_id).execute()
-        else:  # Record does not exist, insert new
+        else: 
             supabase.table("logs").insert({"job_id": job_id, "logs": logs}).execute()
         
         return {"status": "success", "message": "Logs updated successfully"}

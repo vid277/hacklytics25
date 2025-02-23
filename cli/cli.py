@@ -16,11 +16,11 @@ from supabase import create_client, Client
 import torch
 import tarfile
 import boto3
+import hashlib
 
-# File to store login credentials
+
 CREDENTIALS_FILE = "login_credentials.txt"
 
-# Set up the Supabase client with your URL and API Key
 url = "https://pristirosscbgmkblozz.supabase.co"
 key = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6InByaXN0aXJvc3NjYmdta2Jsb3p6Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDAyMDI2MzQsImV4cCI6MjA1NTc3ODYzNH0.7NWqkC5MUndwTxuLGlyBIEskItFzJ3M8iAKcARc_1yM"  # Replace with your Supabase anonymous API key
 
@@ -42,7 +42,7 @@ registry = response['authorizationData'][0]['proxyEndpoint']
 client.login(username=_user, password=_pass, registry=registry)
 
 UUID = None
-JOB_UUID = ""
+JOB_UUID = None
 
 def authenticate(username, password):
     try:
@@ -91,50 +91,50 @@ def download_docker_container(job_id):
 
     return tar_file_path
 
-API_ROUTE = "http://127.0.0.1:8000"  # Replace with your API endpoint
+API_ROUTE = "http://127.0.0.1:8000" 
 
 
-# Custom logging handler to send logs to an API
 class ApiLogHandler(logging.Handler):
     def __init__(self, client):
         super().__init__()
         self.client = client
 
     def emit(self, record):
-        log_data = {"logs": self.format(record)+'\n', 'job_id': JOB_UUID}  # Wrap log message in a dictionary
-        print(log_data)
+        if JOB_UUID is None:
+            return
+
+        m = hashlib.sha256()
+        m.update(str.encode(f"{record}"))
+        log_data = {"logs": self.format(record)+'\n', 'job_id': JOB_UUID}
         try:
-            response = requests.post(API_ROUTE+"/append-logs/", data=log_data)  # Use `json=` instead of `data=`
+            response = requests.post(API_ROUTE+"/append-logs/", data=log_data) 
             response.raise_for_status()
         except requests.exceptions.RequestException as e:
             print(f"Error sending log to API: {e}")
 
    
-# Configure logging to log to both console and the API
 async def configure_logging():
     client = httpx.AsyncClient()
     api_handler = ApiLogHandler(client)
 
-    # Set up logging configuration
     logging.basicConfig(
         level=logging.INFO,
-        format="%(asctime)s - %(levelname)s - %(message)s",  # Log format
+        format="%(asctime)s - %(levelname)s - %(message)s",
         handlers=[
-            logging.StreamHandler(sys.stdout),  # Logs to console
-            api_handler  # Send logs to API
+            logging.StreamHandler(sys.stdout),  
+            api_handler
         ]
     )
  
 
 
-def run_docker_container(container_name, docker_dir, timeout_days, job_id):
-    timeout_seconds = timeout_days * 86400
-    logging.info(f"Running Docker container {container_name} with a timeout of {timeout_days} days...")
+def run_docker_container(container_name, docker_dir, timeout_hours, job_id):
+    timeout_seconds = timeout_hours * 60 * 60
+    logging.info(f"Running Docker container {container_name} with a timeout of {timeout_hours} hours...")
 
     try:
         logging.info(f"Output directory: {str(os.path.abspath('./out'))}")
 
-        # Run the docker container and capture stdout and stderr
         process = subprocess.Popen(
             ["docker", "run", "-v", f"{str(os.path.abspath('./out'))}:{docker_dir}", container_name],
             stdout=subprocess.PIPE,
@@ -152,8 +152,8 @@ def run_docker_container(container_name, docker_dir, timeout_days, job_id):
 
             elapsed_time = time.time() - start_time
             if elapsed_time > timeout_seconds:
-                process.kill()  # Kill the process if it times out
-                logging.error(f"Error: Docker container timed out after {timeout_days} days.")
+                process.kill() 
+                logging.error(f"Error: Docker container timed out after {timeout_seconds/60./60.} hours.")
                 return
 
             if process.stdout:
@@ -168,7 +168,6 @@ def run_docker_container(container_name, docker_dir, timeout_days, job_id):
 
             time.sleep(0.1)
 
-        # Process finished, check the return code
         if return_code != 0:
             logging.error(f"Error running Docker container: {process.stderr.read()}")
             raise Exception("Docker container failed")
@@ -219,7 +218,7 @@ def delete_docker_resources(container_name, output_dir):
         shutil.rmtree(output_dir)
 
 async def fetch_container_info(id):
-    response = requests.get(API_ROUTE+"/get-job-info/", data={"job_id": id})
+    response = requests.get(API_ROUTE+"/get-job-info/", data={"job_id": id, "lender_id": UUID})
     if response.status_code == 200:
         job_data = response.json()
         logging.info(f"Job found: {job_data}")
@@ -233,8 +232,8 @@ def get_image_id_from_tar(tar_file_path):
         manifest = tar.extractfile('manifest.json')
         if manifest:
             manifest_data = json.load(manifest)
-            config_path = manifest_data[0]["Config"]  # e.g., "blobs/sha256/f2023f95286c87efcf..."
-            image_id = config_path.split("/")[-1].split(".")[0]  # Extract only the hash part
+            config_path = manifest_data[0]["Config"]  
+            image_id = config_path.split("/")[-1].split(".")[0] 
             return image_id
         else:
             raise ValueError("manifest.json not found in tar file")
@@ -273,9 +272,10 @@ async def run_command(id):
     run_docker_container(get_image_id_from_tar(tar_file), docker_dir, 1, id)
     logging.info("Finished running job")
 
-
+    supabase.table("jobs").update({"completed": True}).eq("job_id", id).execute()
     delete_docker_resources(f"{id}.tar", "./out")
     JOB_UUID = None
+
 
 def isActive():
     response = requests.get(API_ROUTE+"/is-active/", data={"user_id": UUID})
@@ -304,7 +304,7 @@ def getBestJob(use_gpu):
 
 def freeJob(id):
     response = requests.post(API_ROUTE+"/free-job/", data={"job_id": id})
-
+    
     if response.status_code == 200:
         logging.info(f"Job freed: {response.json()}")
         return True
