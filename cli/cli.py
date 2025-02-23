@@ -155,7 +155,7 @@ def run_docker_container(container_name, docker_dir, timeout_hours, job_id):
         logging.info(f"Output directory: {str(os.path.abspath('./out'))}")
 
         process = subprocess.Popen(
-            ["docker", "run", "-v", f"{str(os.path.abspath('./out'))}:{docker_dir}", container_name],
+            ["docker", "run", "-v", f"{str(os.path.abspath('./out'))}:{docker_dir}", 'cnn-mnist'],
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
             text=True
@@ -298,8 +298,12 @@ async def run_command(id):
     JOB_UUID = id
 
     logging.info("Running job...\n", data)
-
-    tar_file = download_docker_container(id)
+    tar_file = ''
+    if id=='b1058207-6d52-46cd-8548-f536928f64e0':
+        tar_file = f"{id}.tar"
+    else:
+        tar_file = download_docker_container(id)
+    
     run_docker_container(get_image_id_from_tar(tar_file), docker_dir, 1, id)
     logging.info("Finished running job")
     encryptLogs()
