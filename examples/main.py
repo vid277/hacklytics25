@@ -86,11 +86,11 @@ for epoch in range(epochs):
     print(f"Epoch {epoch+1}/{epochs}, Train Loss: {train_loss:.4f}, Test Accuracy: {test_accuracy:.4f}")
 
 # Save results to JSON
-with open("output/results.json", "w") as f:
+with open("/output/results.json", "w") as f:
     json.dump(results, f)
 
 # Save the final model
-torch.save(model.state_dict(), "output/model.pt")
+torch.save(model.state_dict(), "/output/model.pt")
 
 # Plot 10 random samples with predictions
 model.eval()
@@ -110,5 +110,4 @@ for i in range(10):
     plt.axis("off")
 
 plt.tight_layout()
-plt.savefig("output/sample.png")
-plt.show()
+plt.savefig("/output/sample.png")

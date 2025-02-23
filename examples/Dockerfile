@@ -1,21 +1,22 @@
+# Use an official PyTorch image as the base image
+FROM pytorch/pytorch:latest
 
-FROM continuumio/miniconda3:latest
+# Set the working directory in the container
+WORKDIR /app
 
+# Install any necessary system dependencies
+RUN apt-get update && apt-get install -y \
+    python3-pip \
+    python3-dev \
+    git \
+    && rm -rf /var/lib/apt/lists/*
 
-COPY environment.yaml ./
+# Install Python dependencies
+COPY requirements.txt .
+RUN pip3 install --no-cache-dir -r requirements.txt
 
-
-RUN conda env create -f environment.yaml
-
-
-RUN echo "source activate $(head -1 environment.yaml | cut -d' ' -f2)" > ~/.bashrc
-ENV PATH /opt/conda/envs/$(head -1 environment.yaml | cut -d' ' -f2)/bin:$PATH
-
-
-RUN mkdir -p /outputs
-
-
+# Copy the application code to the container
 COPY . .
 
-
-CMD ["python", "main.py"]
+# Set the entry point to run your script
+CMD ["python3", "main.py"]
