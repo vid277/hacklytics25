@@ -1,11 +1,10 @@
-import { createServerClient } from "@supabase/ssr";
+import { createServerClient, type CookieOptions } from "@supabase/ssr";
 import { cookies } from "next/headers";
-import { CookieOptions } from "@supabase/ssr";
 
-export const createClient = async () => {
-  const cookieStore = await cookies();
+export const createClient = () => {
+  const cookieStore = cookies();
 
-  const client = createServerClient(
+  return createServerClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
@@ -15,38 +14,35 @@ export const createClient = async () => {
         },
         set(name: string, value: string, options: CookieOptions) {
           try {
-            cookieStore.set(name, value, {
-              ...options,
-              sameSite: 'lax',
-              secure: process.env.NODE_ENV === 'production',
-            });
-          } catch {
-            // Ignore errors when cookies cannot be set
+            cookieStore.set({ name, value, ...options });
+          } catch (error) {
+            if (process.env.NODE_ENV !== "production") {
+              console.error("Error setting cookie:", error);
+            }
           }
         },
         remove(name: string, options: CookieOptions) {
           try {
-            cookieStore.delete(name, {
-              ...options,
-              sameSite: 'lax',
-              secure: process.env.NODE_ENV === 'production',
-            });
-          } catch {
-            // Ignore errors when cookies cannot be removed
+            cookieStore.delete(name);
+          } catch (error) {
+            if (process.env.NODE_ENV !== "production") {
+              console.error("Error removing cookie:", error);
+            }
           }
         },
       },
-    }
+    },
   );
-
-  const {
-    data: { user },
-    error,
-  } = await client.auth.getUser();
-
-  if (error) {
-    console.error('Error getting user:', error.message);
-  }
-
-  return client;
 };
+
+export async function getSession() {
+  const supabase = createClient();
+  try {
+    const {
+      data: { session },
+    } = await supabase.auth.getSession();
+    return session;
+  } catch (error) {
+    return null;
+  }
+}
