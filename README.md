@@ -1,7 +1,5 @@
 # DeQo - Decentralized Compute Platform
 
-![DeQo Banner](https://deqo.netlify.app/banner.png)
-
 DeQo is a decentralized compute platform that allows users to share and monetize their idle computing resources. Built at Hacklytics 2024, DeQo aims to create an efficient marketplace for distributed computing.
 
 ## 🌟 Features
@@ -43,17 +41,9 @@ DeQo is a decentralized compute platform that allows users to share and monetize
 - Secure authentication via Supabase
 - HTTPS encryption for all API communication
 
-## 👥 Team
-
-- [Team Member 1] - Frontend Development
-- [Team Member 2] - Backend Architecture  
-- [Team Member 3] - DevOps & Infrastructure
-- [Team Member 4] - Smart Contract Development
-
 ## 🏆 Hacklytics 2024
 
 Built during Hacklytics 2024 at Georgia Tech. DeQo aims to democratize access to compute resources while providing an opportunity for resource providers to monetize idle capacity.
 
 ## 📝 License
-
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
